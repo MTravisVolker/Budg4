@@ -6,16 +6,20 @@
 
 ## Table of Contents
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Screenshots](#screenshots)
-- [Getting Started](#getting-started)
-  - [Backend Setup](#backend-setup)
-  - [Frontend Setup](#frontend-setup)
-- [Database Schema](#database-schema)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+- [Budg](#budg)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Tech Stack](#tech-stack)
+  - [UI Modernization \& Tailwind CSS Integration](#ui-modernization--tailwind-css-integration)
+  - [Screenshots](#screenshots)
+  - [Getting Started](#getting-started)
+    - [Backend Setup](#backend-setup)
+    - [Frontend Setup](#frontend-setup)
+  - [Database Schema](#database-schema)
+  - [Project Structure](#project-structure)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Acknowledgments](#acknowledgments)
 
 ---
 
@@ -40,6 +44,17 @@
 - **Backend**: Django 5, Django REST Framework, SimpleJWT
 - **Database**: SQLite (dev), designed for PostgreSQL in production
 - **Other**: Modern ESLint config, modular monorepo structure
+
+---
+
+## UI Modernization & Tailwind CSS Integration
+
+- Integrated **Tailwind CSS** for utility-first, responsive styling across the frontend.
+- Added **DaisyUI** for pre-styled, themeable React components.
+- Configured Tailwind with the official **forms plugin** for better form styling.
+- Updated the React login and bills table UI to use DaisyUI cards, tables, modals, and buttons for a modern, clean look.
+- Fixed PostCSS configuration for compatibility with ES modules and the latest Tailwind requirements.
+- All new UI code uses Tailwind and DaisyUI classes for rapid, consistent development.
 
 ---
 
