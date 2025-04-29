@@ -52,3 +52,7 @@ export default tseslint.config({
   },
 })
 ```
+
+# Tailwind CSS + DaisyUI Setup
+
+This project uses [Tailwind CSS](https://tailwindcss.com/), [@tailwindcss/forms](https://github.com/tailwindlabs/tailwindcss-forms), and [DaisyUI](https://daisyui.com/) for styling. You can use Tailwind utility classes in your components, and DaisyUI's pre-styled components are available out of the box.

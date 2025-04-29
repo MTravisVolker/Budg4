@@ -75,9 +75,12 @@ class DueBill(models.Model):
 class AuditLog(models.Model):
     """Logs key events and changes for auditing purposes."""
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    action = models.CharField(max_length=100)
+    table_name = models.CharField(max_length=100)
+    row_id = models.IntegerField()
+    action = models.CharField(max_length=20)  # 'add', 'update', 'delete'
+    before_values = models.JSONField(null=True, blank=True)
+    after_values = models.JSONField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
-    details = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.action} by {self.user} at {self.timestamp}"
+        return f"{self.action} on {self.table_name} (row {self.row_id}) by {self.user} at {self.timestamp}"
