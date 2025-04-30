@@ -139,7 +139,8 @@ function App() {
     }, {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(() => {
+      .then((res) => {
+        console.log('Add Bill Success:', res);
         setShowAddModal(false);
         setAddForm({
           name: '',
@@ -161,7 +162,8 @@ function App() {
           })
           .catch(() => setLoading(false));
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Add Bill Error:', err, err.response);
         setAddError('Failed to add bill');
         setAddLoading(false);
       });
@@ -242,8 +244,16 @@ function App() {
         )}
         {/* Add Bill Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-            <div className="modal-box w-full max-w-lg">
+          <div className="modal modal-open z-50" onClick={() => setShowAddModal(false)}>
+            <div className="modal-box w-full max-w-lg relative" onClick={e => e.stopPropagation()}>
+              <button
+                type="button"
+                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                onClick={() => setShowAddModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
               <h2 className="font-bold text-xl mb-4">Add Bill</h2>
               <form onSubmit={handleAddBill} className="flex flex-col gap-3">
                 <div className="form-control">
@@ -290,13 +300,13 @@ function App() {
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button type="submit" disabled={addLoading} className="btn btn-primary w-full">Add</button>
-                  <button type="button" onClick={() => setShowAddModal(false)} className="btn w-full">Cancel</button>
                 </div>
                 {addError && <div className="text-error text-center">{addError}</div>}
               </form>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
