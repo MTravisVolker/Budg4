@@ -6,6 +6,8 @@ import BillsPage from './BillsPage';
 import StatusesPage from './StatusesPage';
 import RecurrencesPage from './RecurrencesPage';
 import CategoriesPage from './CategoriesPage';
+import BankAccountsPage from './BankAccountsPage';
+import MainPage from './MainPage';
 
 function App() {
   const [username, setUsername] = useState('');
@@ -114,17 +116,21 @@ function App() {
           </div>
           {/* Tab Navigation */}
           <div className="tabs mb-8">
+            <NavLink to="/" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Main</NavLink>
             <NavLink to="/bills" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Bills</NavLink>
             <NavLink to="/statuses" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Statuses</NavLink>
+            <NavLink to="/bankaccounts" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Bank Accounts</NavLink>
             <NavLink to="/categories" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Categories</NavLink>
             <NavLink to="/recurrences" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Recurrences</NavLink>
           </div>
           <Routes>
+            <Route path="/" element={<MainPage token={token} />} />
             <Route path="/bills" element={<BillsPage token={token} />} />
             <Route path="/statuses" element={<StatusesPage token={token} />} />
+            <Route path="/bankaccounts" element={<BankAccountsPage token={token} />} />
             <Route path="/categories" element={<CategoriesPage token={token} />} />
             <Route path="/recurrences" element={<RecurrencesPage token={token} />} />
-            <Route path="*" element={<Navigate to="/bills" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>
