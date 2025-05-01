@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-do
 import BillsPage from './BillsPage';
 import StatusesPage from './StatusesPage';
 import RecurrencesPage from './RecurrencesPage';
+import CategoriesPage from './CategoriesPage';
 
 function App() {
   const [username, setUsername] = useState('');
@@ -115,11 +116,13 @@ function App() {
           <div className="tabs mb-8">
             <NavLink to="/bills" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Bills</NavLink>
             <NavLink to="/statuses" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Statuses</NavLink>
+            <NavLink to="/categories" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Categories</NavLink>
             <NavLink to="/recurrences" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Recurrences</NavLink>
           </div>
           <Routes>
             <Route path="/bills" element={<BillsPage token={token} />} />
             <Route path="/statuses" element={<StatusesPage token={token} />} />
+            <Route path="/categories" element={<CategoriesPage token={token} />} />
             <Route path="/recurrences" element={<RecurrencesPage token={token} />} />
             <Route path="*" element={<Navigate to="/bills" replace />} />
           </Routes>
