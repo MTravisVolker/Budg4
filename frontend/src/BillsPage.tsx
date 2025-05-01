@@ -14,7 +14,7 @@ interface Bill {
   priority: number;
 }
 
-interface BankAccount { id: number; name: string; }
+interface BankAccount { id: number; name: string; font_color: string; }
 interface Category { id: number; name: string; }
 interface Recurrence { id: number; name: string; calculation?: string; }
 
@@ -234,7 +234,11 @@ const BillsPage = ({ token }: BillsPageProps) => {
                   <td>{bill.name}</td>
                   <td>{bill.default_amount_due}</td>
                   <td>{bill.url ? <a href={bill.url} target="_blank" rel="noopener noreferrer" className="link link-primary">{bill.url}</a> : '-'}</td>
-                  <td>{accounts.find(acc => acc.id === bill.draft_account)?.name ?? '-'}</td>
+                  <td>{accounts.find(acc => acc.id === bill.draft_account)
+                    ? <span style={{ color: accounts.find(acc => acc.id === bill.draft_account)?.font_color || undefined, fontWeight: 'bold' }}>
+                        {accounts.find(acc => acc.id === bill.draft_account)?.name}
+                      </span>
+                    : '-'}</td>
                   <td>{categories.find(cat => cat.id === bill.category)?.name ?? '-'}</td>
                   <td>{recurrences.find(rec => rec.id === bill.recurrence)?.name ?? '-'}</td>
                   <td>{bill.priority}</td>
