@@ -14,6 +14,10 @@ interface Bill {
   priority: number;
 }
 
+interface BankAccount { id: number; name: string; }
+interface Category { id: number; name: string; }
+interface Recurrence { id: number; name: string; calculation?: string; }
+
 interface BillsPageProps {
   token: string;
 }
@@ -34,6 +38,22 @@ const BillsPage = ({ token }: BillsPageProps) => {
   });
   const [addError, setAddError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
+  const [editBill, setEditBill] = useState<Bill | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    default_amount_due: '',
+    url: '',
+    draft_account: '',
+    category: '',
+    recurrence: '',
+    priority: '0',
+  });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [recurrences, setRecurrences] = useState<Recurrence[]>([]);
 
   useEffect(() => {
     if (!token) return;
@@ -51,7 +71,20 @@ const BillsPage = ({ token }: BillsPageProps) => {
       });
   }, [token]);
 
-  const handleAddChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (!token) return;
+    axios.get('/api/bankaccounts/', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setAccounts(res.data))
+      .catch(() => setAccounts([]));
+    axios.get('/api/categories/', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setCategories(res.data))
+      .catch(() => setCategories([]));
+    axios.get('/api/recurrences/', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setRecurrences(res.data))
+      .catch(() => setRecurrences([]));
+  }, [token]);
+
+  const handleAddChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setAddForm({ ...addForm, [e.target.name]: e.target.value });
   };
 
@@ -101,6 +134,77 @@ const BillsPage = ({ token }: BillsPageProps) => {
       });
   };
 
+  const handleEditClick = (bill: Bill) => {
+    setEditBill(bill);
+    setEditForm({
+      name: bill.name,
+      default_amount_due: bill.default_amount_due.toString(),
+      url: bill.url || '',
+      draft_account: bill.draft_account?.toString() || '',
+      category: bill.category?.toString() || '',
+      recurrence: bill.recurrence?.toString() || '',
+      priority: bill.priority?.toString() || '0',
+    });
+    setShowEditModal(true);
+    setEditError(null);
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const handleEditBill = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editBill) return;
+    setEditError(null);
+    setEditLoading(true);
+    if (!editForm.name || !editForm.default_amount_due) {
+      setEditError('Name and Amount Due are required');
+      setEditLoading(false);
+      return;
+    }
+    axios.put(`/api/bills/${editBill.id}/`, {
+      ...editForm,
+      default_amount_due: parseFloat(editForm.default_amount_due),
+      draft_account: editForm.draft_account ? parseInt(editForm.draft_account) : null,
+      category: editForm.category ? parseInt(editForm.category) : null,
+      recurrence: editForm.recurrence ? parseInt(editForm.recurrence) : null,
+      priority: editForm.priority ? parseInt(editForm.priority) : 0,
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(() => {
+        setShowEditModal(false);
+        setEditBill(null);
+        setEditLoading(false);
+        setLoading(true);
+        axios.get('/api/bills/', { headers: { Authorization: `Bearer ${token}` } })
+          .then(res => {
+            setBills(res.data);
+            setLoading(false);
+          })
+          .catch(() => setLoading(false));
+      })
+      .catch(() => {
+        setEditError('Failed to update bill');
+        setEditLoading(false);
+      });
+  };
+
+  const handleDeleteBill = (id: number) => {
+    if (!window.confirm('Delete this bill?')) return;
+    setLoading(true);
+    axios.delete(`/api/bills/${id}/`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(() => {
+        setBills(bills.filter(b => b.id !== id));
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to delete bill');
+        setLoading(false);
+      });
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -121,6 +225,7 @@ const BillsPage = ({ token }: BillsPageProps) => {
                 <th>Category</th>
                 <th>Recurrence</th>
                 <th>Priority</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -129,10 +234,14 @@ const BillsPage = ({ token }: BillsPageProps) => {
                   <td>{bill.name}</td>
                   <td>{bill.default_amount_due}</td>
                   <td>{bill.url ? <a href={bill.url} target="_blank" rel="noopener noreferrer" className="link link-primary">{bill.url}</a> : '-'}</td>
-                  <td>{bill.draft_account ?? '-'}</td>
-                  <td>{bill.category ?? '-'}</td>
-                  <td>{bill.recurrence ?? '-'}</td>
+                  <td>{accounts.find(acc => acc.id === bill.draft_account)?.name ?? '-'}</td>
+                  <td>{categories.find(cat => cat.id === bill.category)?.name ?? '-'}</td>
+                  <td>{recurrences.find(rec => rec.id === bill.recurrence)?.name ?? '-'}</td>
                   <td>{bill.priority}</td>
+                  <td>
+                    <button className="btn btn-xs btn-outline btn-info mr-2" onClick={() => handleEditClick(bill)}>Edit</button>
+                    <button className="btn btn-xs btn-outline btn-error" onClick={() => handleDeleteBill(bill.id)}>Delete</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -172,21 +281,36 @@ const BillsPage = ({ token }: BillsPageProps) => {
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Draft Account ID</span>
+                  <span className="label-text">Draft Account</span>
                 </label>
-                <input name="draft_account" value={addForm.draft_account} onChange={handleAddChange} type="number" className="input input-bordered" />
+                <select name="draft_account" value={addForm.draft_account} onChange={handleAddChange} className="input input-bordered">
+                  <option value="">Select account</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Category ID</span>
+                  <span className="label-text">Category</span>
                 </label>
-                <input name="category" value={addForm.category} onChange={handleAddChange} type="number" className="input input-bordered" />
+                <select name="category" value={addForm.category} onChange={handleAddChange} className="input input-bordered">
+                  <option value="">Select category</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Recurrence ID</span>
+                  <span className="label-text">Recurrence</span>
                 </label>
-                <input name="recurrence" value={addForm.recurrence} onChange={handleAddChange} type="number" className="input input-bordered" />
+                <select name="recurrence" value={addForm.recurrence} onChange={handleAddChange} className="input input-bordered">
+                  <option value="">Select recurrence</option>
+                  {recurrences.map(rec => (
+                    <option key={rec.id} value={rec.id}>{rec.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-control">
                 <label className="label">
@@ -198,6 +322,84 @@ const BillsPage = ({ token }: BillsPageProps) => {
                 <button type="submit" disabled={addLoading} className="btn btn-primary w-full">Add</button>
               </div>
               {addError && <div className="text-error text-center">{addError}</div>}
+            </form>
+          </div>
+        </div>
+      )}
+      {showEditModal && (
+        <div className="modal modal-open z-50" onClick={() => setShowEditModal(false)}>
+          <div className="modal-box w-full max-w-lg relative" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+              onClick={() => setShowEditModal(false)}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+            <h2 className="font-bold text-xl mb-4">Edit Bill</h2>
+            <form onSubmit={handleEditBill} className="flex flex-col gap-3">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Name</span>
+                </label>
+                <input name="name" value={editForm.name} onChange={handleEditChange} required className="input input-bordered" />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Amount Due</span>
+                </label>
+                <input name="default_amount_due" value={editForm.default_amount_due} onChange={handleEditChange} required type="number" step="0.01" className="input input-bordered" />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">URL</span>
+                </label>
+                <input name="url" value={editForm.url} onChange={handleEditChange} className="input input-bordered" />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Draft Account</span>
+                </label>
+                <select name="draft_account" value={editForm.draft_account} onChange={handleEditChange} className="input input-bordered">
+                  <option value="">Select account</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Category</span>
+                </label>
+                <select name="category" value={editForm.category} onChange={handleEditChange} className="input input-bordered">
+                  <option value="">Select category</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Recurrence</span>
+                </label>
+                <select name="recurrence" value={editForm.recurrence} onChange={handleEditChange} className="input input-bordered">
+                  <option value="">Select recurrence</option>
+                  {recurrences.map(rec => (
+                    <option key={rec.id} value={rec.id}>{rec.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Priority</span>
+                </label>
+                <input name="priority" value={editForm.priority} onChange={handleEditChange} type="number" className="input input-bordered" />
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button type="submit" disabled={editLoading} className="btn btn-primary w-full">Save</button>
+              </div>
+              {editError && <div className="text-error text-center">{editError}</div>}
             </form>
           </div>
         </div>
