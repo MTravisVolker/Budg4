@@ -93,12 +93,16 @@ const MainPage = ({ token }: MainPageProps) => {
     })),
   ];
 
-  // Sort globally by payDate, Priority, DueDate, Account
+  // Sort globally by payDate, Account, Priority, DueDate
   allRowsRaw.sort((a, b) => {
     // payDate
     const aPay = a.pay_date || '';
     const bPay = b.pay_date || '';
     if (aPay !== bPay) return aPay.localeCompare(bPay);
+    // Account (by name)
+    const aName = a.accountObj?.name || '';
+    const bName = b.accountObj?.name || '';
+    if (aName !== bName) return aName.localeCompare(bName);
     // Priority (DueBill only, fallback 0)
     const aPriority = (a.type === 'DueBill' ? a.priority : 0);
     const bPriority = (b.type === 'DueBill' ? b.priority : 0);
@@ -106,11 +110,7 @@ const MainPage = ({ token }: MainPageProps) => {
     // DueDate
     const aDue = a.due_date || '';
     const bDue = b.due_date || '';
-    if (aDue !== bDue) return aDue.localeCompare(bDue);
-    // Account (by name for tie-breaker)
-    const aName = a.accountObj?.name || '';
-    const bName = b.accountObj?.name || '';
-    return aName.localeCompare(bName);
+    return aDue.localeCompare(bDue);
   });
 
   // Add DueBill handlers
@@ -162,7 +162,11 @@ const MainPage = ({ token }: MainPageProps) => {
 
   // Add BankAccountInstance handlers
   const handleAddBankInstanceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setAddBankInstanceForm({ ...addBankInstanceForm, [e.target.name]: e.target.value });
+    if (e.target.name === 'due_date') {
+      setAddBankInstanceForm({ ...addBankInstanceForm, due_date: e.target.value, pay_date: e.target.value });
+    } else {
+      setAddBankInstanceForm({ ...addBankInstanceForm, [e.target.name]: e.target.value });
+    }
   };
   const handleAddBankInstance = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,6 +194,21 @@ const MainPage = ({ token }: MainPageProps) => {
         setAddBankInstanceError('Failed to add bank account instance');
         setAddBankInstanceLoading(false);
       });
+  };
+
+  // Delete row handler
+  const handleDeleteRow = async (type: 'DueBill' | 'BankAccountInstance', id: number) => {
+    if (!window.confirm('Are you sure you want to delete this row?')) return;
+    try {
+      if (type === 'DueBill') {
+        await axios.delete(`/api/duebills/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+      } else {
+        await axios.delete(`/api/bankaccountinstances/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+      }
+      await refresh();
+    } catch {
+      alert('Failed to delete row.');
+    }
   };
 
   return (
@@ -262,83 +281,110 @@ const MainPage = ({ token }: MainPageProps) => {
               </tr>
             </thead>
             <tbody>
-              {allRowsRaw.map((row, idx) => {
-                if (row.accountId == null) return null;
-                const isLastForAccount =
-                  idx === allRowsRaw.length - 1 ||
-                  allRowsRaw[idx + 1].accountId !== row.accountId;
-                const renderedRows = [
-                  <MainTableRow
-                    key={row.type + '-' + row.id}
-                    row={row}
-                    editingCell={editingCell}
-                    savingEdit={savingEdit}
-                    handleCellDoubleClick={handleCellDoubleClick}
-                    handleEditInputChange={handleEditInputChange}
-                    handleEditInputBlur={handleEditInputBlur}
-                    handleEditInputKeyDown={handleEditInputKeyDown}
-                    bills={bills}
-                    accounts={accounts}
-                    statuses={statuses}
-                  />
-                ];
-                if (isLastForAccount) {
-                  // Subtotal logic for this account (same as before)
-                  const accountDueBills = dueBills.filter(db => db.draft_account === row.accountId);
-                  const accountBankInstances = bankInstances.filter(bi => bi.bank_account === row.accountId);
-                  const sortedBankInstances = [...accountBankInstances].sort((a, b) => {
-                    if (!a.pay_date && !b.pay_date) return 0;
-                    if (!a.pay_date) return 1;
-                    if (!b.pay_date) return -1;
-                    return a.pay_date.localeCompare(b.pay_date);
-                  });
-                  const sortedDueBills = [...accountDueBills].sort((a, b) => {
-                    if (!a.pay_date && !b.pay_date) return 0;
-                    if (!a.pay_date) return 1;
-                    if (!b.pay_date) return -1;
-                    if (a.pay_date !== b.pay_date) return a.pay_date.localeCompare(b.pay_date);
-                    if (a.priority !== b.priority) return a.priority - b.priority;
-                    return a.due_date.localeCompare(b.due_date);
-                  });
-                  if (sortedBankInstances.length > 0) {
-                    for (let i = 0; i < sortedBankInstances.length; i++) {
-                      const instance = sortedBankInstances[i];
-                      const nextInstance = sortedBankInstances[i + 1];
-                      const startDate = instance.pay_date;
-                      const endDate = nextInstance?.pay_date;
-                      const dueBillsInRange = sortedDueBills.filter(db => {
+              {(() => {
+                // Globally sorted rows (already sorted above)
+                const renderedRows: React.ReactNode[] = [];
+                const subtotalInsertedForAccount: Record<number, boolean> = {};
+                // For each account, collect due bills for subtotaling
+                const dueBillsByAccount: Record<number, typeof dueBills> = {};
+                dueBills.forEach((db) => {
+                  const draftAccount: number | undefined = db.draft_account === null ? undefined : db.draft_account;
+                  if (typeof draftAccount === 'number') {
+                    if (!dueBillsByAccount[draftAccount]) dueBillsByAccount[draftAccount] = [];
+                    dueBillsByAccount[draftAccount].push(db);
+                  }
+                });
+                // For each account, collect bank instances for subtotaling
+                const bankInstancesByAccount: Record<number, typeof bankInstances> = {};
+                bankInstances.forEach((bi) => {
+                  const bankAccount: number | undefined = bi.bank_account === null ? undefined : bi.bank_account;
+                  if (typeof bankAccount === 'number') {
+                    if (!bankInstancesByAccount[bankAccount]) bankInstancesByAccount[bankAccount] = [];
+                    bankInstancesByAccount[bankAccount].push(bi);
+                  }
+                });
+                // Track which due bills have been rendered (for subtotaling)
+                const renderedDueBillIds = new Set<number>();
+                // Iterate through globally sorted rows
+                for (let i = 0; i < allRowsRaw.length; i++) {
+                  const r = allRowsRaw[i];
+                  const isBankInstance = r.type === 'BankAccountInstance';
+                  const isDueBill = r.type === 'DueBill';
+                  // Render the row
+                  renderedRows.push(
+                    <MainTableRow
+                      key={r.type + '-' + r.id}
+                      row={r}
+                      editingCell={editingCell}
+                      savingEdit={savingEdit}
+                      handleCellDoubleClick={handleCellDoubleClick}
+                      handleEditInputChange={handleEditInputChange}
+                      handleEditInputBlur={handleEditInputBlur}
+                      handleEditInputKeyDown={handleEditInputKeyDown}
+                      bills={bills}
+                      accounts={accounts}
+                      statuses={statuses}
+                      onDelete={handleDeleteRow}
+                    />
+                  );
+                  // For due bills, mark as rendered
+                  if (isDueBill) {
+                    renderedDueBillIds.add(r.id);
+                  }
+                  // If this is a bank instance, insert subtotal after all due bills with pay_date >= this instance's pay_date and < next instance's pay_date
+                  if (isBankInstance) {
+                    const accountId: number | undefined = r.accountId === null ? undefined : r.accountId;
+                    if (typeof accountId === 'number') {
+                      const thisPayDate = r.pay_date || '';
+                      // Find next bank instance for this account
+                      const accountBankInstances = bankInstancesByAccount[accountId] || [];
+                      const thisIndex = accountBankInstances.findIndex((bi) => bi.id === r.id);
+                      const nextInstance = accountBankInstances[thisIndex + 1];
+                      const nextPayDate = nextInstance ? nextInstance.pay_date || '' : null;
+                      // Find due bills in this range
+                      const dueBillsInRange = (dueBillsByAccount[accountId] || []).filter((db) => {
                         if (!db.pay_date) return false;
-                        if (startDate && db.pay_date < startDate) return false;
-                        if (endDate && db.pay_date >= endDate) return false;
+                        if (db.pay_date < thisPayDate) return false;
+                        if (nextPayDate && db.pay_date >= nextPayDate) return false;
                         return true;
                       });
-                      const sumDue = dueBillsInRange.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
-                      const subtotal = parseFloat(instance.balance) - sumDue;
+                      const sumDue = dueBillsInRange.reduce((sum: number, db) => sum + parseFloat(db.amount_due), 0);
+                      const subtotal = parseFloat(r.balance) - sumDue;
                       renderedRows.push(
                         <SubtotalRow
-                          key={`subtotal-${row.accountId}-${instance.id}`}
-                          rowKey={`subtotal-${row.accountId}-${instance.id}`}
+                          key={`subtotal-${accountId}-${r.id}`}
+                          rowKey={`subtotal-${accountId}-${r.id}`}
                           subtotal={subtotal}
-                          accountName={accounts.find(a => a.id === row.accountId)?.name || 'Unknown'}
-                          fontColor={accounts.find(a => a.id === row.accountId)?.font_color}
+                          accountName={accounts.find(a => a.id === accountId)?.name || 'Unknown'}
+                          fontColor={accounts.find(a => a.id === accountId)?.font_color}
                         />
                       );
                     }
-                  } else if (sortedDueBills.length > 0) {
-                    const sumDue = sortedDueBills.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
-                    renderedRows.push(
-                      <SubtotalRow
-                        key={`subtotal-${row.accountId}-noinstance`}
-                        rowKey={`subtotal-${row.accountId}-noinstance`}
-                        subtotal={-sumDue}
-                        accountName={accounts.find(a => a.id === row.accountId)?.name || 'Unknown'}
-                        fontColor={accounts.find(a => a.id === row.accountId)?.font_color}
-                      />
-                    );
+                  }
+                  // If this is the last row for an account and there are due bills not covered by any bank instance, insert subtotal for those
+                  const nextRow = allRowsRaw[i + 1];
+                  const accountId: number | undefined = r.accountId === null ? undefined : r.accountId;
+                  const isLastForAccount = typeof accountId === 'number' && (!nextRow || nextRow.accountId !== accountId);
+                  if (isLastForAccount && typeof accountId === 'number' && !subtotalInsertedForAccount[accountId]) {
+                    // Find due bills for this account not covered by any bank instance
+                    const accountDueBills = (dueBillsByAccount[accountId] || []).filter((db) => db.pay_date && !renderedDueBillIds.has(db.id));
+                    if (accountDueBills.length > 0) {
+                      const sumDue = accountDueBills.reduce((sum: number, db) => sum + parseFloat(db.amount_due), 0);
+                      renderedRows.push(
+                        <SubtotalRow
+                          key={`subtotal-${accountId}-noinstance`}
+                          rowKey={`subtotal-${accountId}-noinstance`}
+                          subtotal={-sumDue}
+                          accountName={accounts.find(a => a.id === accountId)?.name || 'Unknown'}
+                          fontColor={accounts.find(a => a.id === accountId)?.font_color}
+                        />
+                      );
+                    }
+                    subtotalInsertedForAccount[accountId] = true;
                   }
                 }
                 return renderedRows;
-              })}
+              })()}
             </tbody>
           </table>
         </div>

@@ -54,12 +54,8 @@ const AddBankInstanceModal: React.FC<AddBankInstanceModalProps> = ({
             <input name="balance" value={form.balance} onChange={onChange} required type="number" step="0.01" className="input input-bordered" />
           </div>
           <div className="form-control">
-            <label className="label"><span className="label-text">Due Date</span></label>
+            <label className="label"><span className="label-text">Date</span></label>
             <input name="due_date" value={form.due_date} onChange={onChange} required type="date" className="input input-bordered" />
-          </div>
-          <div className="form-control">
-            <label className="label"><span className="label-text">Pay Date</span></label>
-            <input name="pay_date" value={form.pay_date} onChange={onChange} type="date" className="input input-bordered" />
           </div>
           <div className="form-control">
             <label className="label"><span className="label-text">Status</span></label>

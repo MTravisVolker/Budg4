@@ -18,6 +18,7 @@ interface MainTableRowProps {
   bills: Bill[];
   accounts: BankAccount[];
   statuses: Status[];
+  onDelete: (type: 'DueBill' | 'BankAccountInstance', id: number) => void;
 }
 
 const MainTableRow: React.FC<MainTableRowProps> = ({
@@ -31,6 +32,7 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
   bills,
   accounts,
   statuses,
+  onDelete,
 }) => (
   <tr
     key={row.type + '-' + row.id}
@@ -171,6 +173,12 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
       ) : (
         formatCurrency(row.type === 'DueBill' ? row.amount_due : row.balance)
       )}
+    </td>
+    {/* Delete Button */}
+    <td>
+      <button className="btn btn-error btn-xs" onClick={() => onDelete(row.type, row.id)}>
+        Delete
+      </button>
     </td>
   </tr>
 );
