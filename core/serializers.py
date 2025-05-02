@@ -20,6 +20,7 @@ class BankAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = BankAccount
         fields = '__all__'
+        read_only_fields = ['user']
 
 class BankAccountInstanceSerializer(serializers.ModelSerializer):
     class Meta:
