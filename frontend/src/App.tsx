@@ -115,13 +115,18 @@ function App() {
             <button onClick={handleLogout} className="btn btn-outline btn-error">Logout</button>
           </div>
           {/* Tab Navigation */}
-          <div className="tabs mb-8">
-            <NavLink to="/" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Main</NavLink>
-            <NavLink to="/bills" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Bills</NavLink>
-            <NavLink to="/statuses" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Statuses</NavLink>
-            <NavLink to="/bankaccounts" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Bank Accounts</NavLink>
-            <NavLink to="/categories" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Categories</NavLink>
-            <NavLink to="/recurrences" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Recurrences</NavLink>
+          <div className="tabs mb-8 flex gap-2 items-center">
+            <NavLink to="/" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Home</NavLink>
+            <div className="dropdown dropdown-hover">
+              <label tabIndex={0} className="tab cursor-pointer">Configure</label>
+              <ul tabIndex={0} className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 z-50">
+                <li><NavLink to="/bills" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Bills</NavLink></li>
+                <li><NavLink to="/statuses" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Statuses</NavLink></li>
+                <li><NavLink to="/bankaccounts" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Bank Accounts</NavLink></li>
+                <li><NavLink to="/categories" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Categories</NavLink></li>
+                <li><NavLink to="/recurrences" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Recurrences</NavLink></li>
+              </ul>
+            </div>
           </div>
           <Routes>
             <Route path="/" element={<MainPage token={token} />} />
