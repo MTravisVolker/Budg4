@@ -9,6 +9,7 @@ from django.utils.functional import SimpleLazyObject
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
 import decimal
+import datetime
 User = get_user_model()
 
 AUDITED_MODELS = [BankAccount, BankAccountInstance, Bill, DueBill, Status, Recurrence, Category]
@@ -40,6 +41,16 @@ def convert_decimals(obj):
         return float(obj)
     return obj
 
+# Helper to make dicts JSON serializable (convert date/datetime to string)
+def make_json_serializable(obj):
+    if isinstance(obj, dict):
+        return {k: make_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_serializable(v) for v in obj]
+    elif isinstance(obj, (datetime.date, datetime.datetime)):
+        return obj.isoformat()
+    return obj
+
 @receiver(pre_save)
 def cache_old_instance(sender, instance, **kwargs):
     if sender in AUDITED_MODELS and instance.pk:
@@ -58,6 +69,7 @@ def log_save(sender, instance, created, **kwargs):
     table_name = sender.__name__
     row_id = instance.pk
     after_values = convert_decimals(model_to_dict(instance))
+    after_values = make_json_serializable(after_values)
     if created:
         AuditLog.objects.create(
             user=user,
@@ -70,6 +82,7 @@ def log_save(sender, instance, created, **kwargs):
     else:
         before_values = _old_instance_cache.pop(get_instance_key(instance), None)
         before_values = convert_decimals(before_values)
+        before_values = make_json_serializable(before_values)
         AuditLog.objects.create(
             user=user,
             table_name=table_name,
@@ -94,6 +107,7 @@ def log_delete(sender, instance, **kwargs):
     row_id = instance.pk
     before_values = _old_instance_cache.pop(get_instance_key(instance), None)
     before_values = convert_decimals(before_values)
+    before_values = make_json_serializable(before_values)
     AuditLog.objects.create(
         user=user,
         table_name=table_name,
