@@ -124,31 +124,309 @@ const MainPage = ({ token }: MainPageProps) => {
       });
   }, [token]);
 
-  // Filter by date range
-  const filterByDate = <T extends { due_date: string }>(items: T[]) => {
-    if (!dateRange.start || !dateRange.end) return items;
-    return items.filter(item => item.due_date >= dateRange.start && item.due_date <= dateRange.end);
-  };
-
-  // Union and sort by due_date, then by priority
-  const combinedRows = [
-    ...filterByDate(dueBills).map(row => ({
+  // Prepare globally sorted rows and insert subtotal rows after each account's last record
+  const allRowsRaw = [
+    ...dueBills.map(row => ({
       ...row,
       type: 'DueBill' as const,
       name: bills.find(b => b.id === row.bill)?.name || 'Unknown',
       statusObj: statuses.find(s => s.id === row.status),
       accountObj: accounts.find(a => a.id === row.draft_account),
+      accountId: row.draft_account,
     })),
-    ...filterByDate(bankInstances).map(row => ({
+    ...bankInstances.map(row => ({
       ...row,
       type: 'BankAccountInstance' as const,
       name: accounts.find(a => a.id === row.bank_account)?.name || 'Unknown',
       statusObj: statuses.find(s => s.id === row.status),
       accountObj: accounts.find(a => a.id === row.bank_account),
+      accountId: row.bank_account,
     })),
-  ].sort((a, b) => {
-    if (a.due_date !== b.due_date) return a.due_date.localeCompare(b.due_date);
-    return (a.priority ?? 0) - (b.priority ?? 0);
+  ];
+
+  // Sort globally by payDate, Priority, DueDate, Account
+  allRowsRaw.sort((a, b) => {
+    // payDate
+    const aPay = a.pay_date || '';
+    const bPay = b.pay_date || '';
+    if (aPay !== bPay) return aPay.localeCompare(bPay);
+    // Priority (DueBill only, fallback 0)
+    const aPriority = (a.type === 'DueBill' ? a.priority : 0);
+    const bPriority = (b.type === 'DueBill' ? b.priority : 0);
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    // DueDate
+    const aDue = a.due_date || '';
+    const bDue = b.due_date || '';
+    if (aDue !== bDue) return aDue.localeCompare(bDue);
+    // Account (by name for tie-breaker)
+    const aName = a.accountObj?.name || '';
+    const bName = b.accountObj?.name || '';
+    return aName.localeCompare(bName);
+  });
+
+  // Prepare for rendering with subtotals
+  const rowsWithSubtotals: Array<React.ReactNode> = [];
+  const accountIdsInOrder: number[] = [];
+  const accountRowMap: Record<number, typeof allRowsRaw> = {};
+
+  // Group rows by account in the order they appear
+  allRowsRaw.forEach(row => {
+    if (row.accountId == null) return; // skip no-account
+    if (!accountRowMap[row.accountId]) {
+      accountRowMap[row.accountId] = [];
+      accountIdsInOrder.push(row.accountId);
+    }
+    accountRowMap[row.accountId].push(row);
+  });
+
+  // Helper: get account name by id
+  const getAccountName = (id: number) => accounts.find(a => a.id === id)?.name || 'Unknown';
+  const getAccountFontColor = (id: number) => accounts.find(a => a.id === id)?.font_color || undefined;
+
+  // Handle edit input change
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (!editingCell) return;
+    setEditingCell({ ...editingCell, value: e.target.value });
+  };
+
+  // Handle blur or Enter
+  const handleEditInputBlur = () => {
+    handleSaveEdit();
+  };
+  const handleEditInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      setEditingCell(null);
+    }
+  };
+
+  // For each row in global order, render, and after the last row for an account, insert subtotal row
+  allRowsRaw.forEach((row, idx) => {
+    if (row.accountId == null) return; // skip no-account
+    // Render the row
+    rowsWithSubtotals.push(
+      <tr
+        key={row.type + '-' + row.id}
+        style={{
+          background: row.statusObj?.highlight_color || undefined,
+          color: row.accountObj?.font_color || undefined,
+        }}
+      >
+        {/* Type */}
+        <td style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}>{row.type === 'DueBill' ? 'Due Bill' : 'Account Instance'}</td>
+        {/* Name */}
+        <td
+          style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
+          onDoubleClick={() => handleCellDoubleClick(row, row.type, 'name', row.type === 'DueBill' ? row.bill : row.bank_account)}
+        >
+          {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'name' ? (
+            <select
+              value={editingCell.value}
+              onChange={handleEditInputChange}
+              onBlur={handleEditInputBlur}
+              onKeyDown={handleEditInputKeyDown}
+              autoFocus
+              className="input input-bordered"
+              disabled={savingEdit}
+            >
+              <option value="">Select</option>
+              {(row.type === 'DueBill' ? bills : accounts).map(opt => (
+                <option key={opt.id} value={opt.id}>{opt.name}</option>
+              ))}
+            </select>
+          ) : (
+            row.name
+          )}
+        </td>
+        {/* Pay Date */}
+        <td
+          style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
+          onDoubleClick={() => handleCellDoubleClick(row, row.type, 'pay_date', row.pay_date || '')}
+        >
+          {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'pay_date' ? (
+            <input
+              type="date"
+              value={editingCell.value || ''}
+              onChange={handleEditInputChange}
+              onBlur={handleEditInputBlur}
+              onKeyDown={handleEditInputKeyDown}
+              autoFocus
+              className="input input-bordered"
+              disabled={savingEdit}
+            />
+          ) : (
+            row.pay_date
+              ? (() => {
+                  const [year, month, day] = row.pay_date.split('-');
+                  if (year && month && day) {
+                    return `${month.padStart(2, '0')}/${day.padStart(2, '0')}/${year}`;
+                  }
+                  return row.pay_date;
+                })()
+              : '-'
+          )}
+        </td>
+        {/* Due Date */}
+        <td
+          style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
+          onDoubleClick={() => handleCellDoubleClick(row, row.type, 'due_date', row.due_date)}
+        >
+          {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'due_date' ? (
+            <input
+              type="date"
+              value={editingCell.value}
+              onChange={handleEditInputChange}
+              onBlur={handleEditInputBlur}
+              onKeyDown={handleEditInputKeyDown}
+              autoFocus
+              className="input input-bordered"
+              disabled={savingEdit}
+            />
+          ) : (
+            (() => {
+              const [year, month, day] = row.due_date.split('-');
+              if (year && month && day) {
+                return `${month.padStart(2, '0')}/${day.padStart(2, '0')}/${year}`;
+              }
+              return row.due_date;
+            })()
+          )}
+        </td>
+        {/* Status */}
+        <td
+          style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
+          onDoubleClick={() => handleCellDoubleClick(row, row.type, 'status', row.statusObj?.id || '')}
+        >
+          {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'status' ? (
+            <select
+              value={editingCell.value}
+              onChange={handleEditInputChange}
+              onBlur={handleEditInputBlur}
+              onKeyDown={handleEditInputKeyDown}
+              autoFocus
+              className="input input-bordered"
+              disabled={savingEdit}
+            >
+              <option value="">Select status</option>
+              {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          ) : (
+            row.statusObj?.name || '-'
+          )}
+        </td>
+        {/* Account */}
+        <td
+          style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
+          onDoubleClick={() => handleCellDoubleClick(row, row.type, 'account', row.accountObj?.id || '')}
+        >
+          {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'account' ? (
+            <select
+              value={editingCell.value}
+              onChange={handleEditInputChange}
+              onBlur={handleEditInputBlur}
+              onKeyDown={handleEditInputKeyDown}
+              autoFocus
+              className="input input-bordered"
+              disabled={savingEdit}
+            >
+              <option value="">Select account</option>
+              {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+            </select>
+          ) : (
+            row.accountObj?.name || '-'
+          )}
+        </td>
+        {/* Amount/Balance */}
+        <td
+          style={{
+            ...(row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}),
+            textAlign: 'right',
+          }}
+          onDoubleClick={() => handleCellDoubleClick(row, row.type, row.type === 'DueBill' ? 'amount_due' : 'balance', row.type === 'DueBill' ? row.amount_due : row.balance)}
+        >
+          {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === (row.type === 'DueBill' ? 'amount_due' : 'balance') ? (
+            <input
+              type="number"
+              value={editingCell.value}
+              onChange={handleEditInputChange}
+              onBlur={handleEditInputBlur}
+              onKeyDown={handleEditInputKeyDown}
+              autoFocus
+              className="input input-bordered"
+              disabled={savingEdit}
+            />
+          ) : (
+            (() => {
+              const value = row.type === 'DueBill' ? row.amount_due : row.balance;
+              const num = Number(value);
+              if (!isNaN(num)) {
+                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+              }
+              return value;
+            })()
+          )}
+        </td>
+      </tr>
+    );
+    // If this is the last row for this account, insert subtotal row
+    const isLastForAccount =
+      idx === allRowsRaw.length - 1 ||
+      allRowsRaw[idx + 1].accountId !== row.accountId;
+    if (isLastForAccount) {
+      // Subtotal logic for this account (same as before)
+      // Get all DueBills and BankAccountInstances for this account
+      const accountDueBills = dueBills.filter(db => db.draft_account === row.accountId);
+      const accountBankInstances = bankInstances.filter(bi => bi.bank_account === row.accountId);
+      // Sort BankAccountInstances by pay_date (ascending, nulls last)
+      const sortedBankInstances = [...accountBankInstances].sort((a, b) => {
+        if (!a.pay_date && !b.pay_date) return 0;
+        if (!a.pay_date) return 1;
+        if (!b.pay_date) return -1;
+        return a.pay_date.localeCompare(b.pay_date);
+      });
+      // Sort DueBills by pay_date, then priority, then due_date
+      const sortedDueBills = [...accountDueBills].sort((a, b) => {
+        if (!a.pay_date && !b.pay_date) return 0;
+        if (!a.pay_date) return 1;
+        if (!b.pay_date) return -1;
+        if (a.pay_date !== b.pay_date) return a.pay_date.localeCompare(b.pay_date);
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return a.due_date.localeCompare(b.due_date);
+      });
+      if (sortedBankInstances.length > 0) {
+        for (let i = 0; i < sortedBankInstances.length; i++) {
+          const instance = sortedBankInstances[i];
+          const nextInstance = sortedBankInstances[i + 1];
+          const startDate = instance.pay_date;
+          const endDate = nextInstance?.pay_date;
+          // DueBills in [startDate, endDate)
+          const dueBillsInRange = sortedDueBills.filter(db => {
+            if (!db.pay_date) return false;
+            if (startDate && db.pay_date < startDate) return false;
+            if (endDate && db.pay_date >= endDate) return false;
+            return true;
+          });
+          const sumDue = dueBillsInRange.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
+          const subtotal = parseFloat(instance.balance) - sumDue;
+          rowsWithSubtotals.push(
+            <tr key={`subtotal-${row.accountId}-${instance.id}`} style={{ fontWeight: 'bold', background: '#f3f4f6', color: getAccountFontColor(row.accountId) }}>
+              <td colSpan={6} style={{ textAlign: 'right' }}>{`Subtotal ${getAccountName(row.accountId)}`}</td>
+              <td style={{ textAlign: 'right' }}>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}</td>
+            </tr>
+          );
+        }
+      } else if (sortedDueBills.length > 0) {
+        // No BankAccountInstance, but DueBills exist
+        const sumDue = sortedDueBills.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
+        rowsWithSubtotals.push(
+          <tr key={`subtotal-${row.accountId}-noinstance`} style={{ fontWeight: 'bold', background: '#f3f4f6', color: getAccountFontColor(row.accountId) }}>
+            <td colSpan={6} style={{ textAlign: 'right' }}>{`Subtotal ${getAccountName(row.accountId)}`}</td>
+            <td style={{ textAlign: 'right' }}>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(-sumDue)}</td>
+          </tr>
+        );
+      }
+    }
   });
 
   // Save edit handler
@@ -222,24 +500,6 @@ const MainPage = ({ token }: MainPageProps) => {
     value: string | number
   ) => {
     setEditingCell({ rowId: row.id, type, field, value });
-  };
-
-  // Handle edit input change
-  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (!editingCell) return;
-    setEditingCell({ ...editingCell, value: e.target.value });
-  };
-
-  // Handle blur or Enter
-  const handleEditInputBlur = () => {
-    handleSaveEdit();
-  };
-  const handleEditInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveEdit();
-    } else if (e.key === 'Escape') {
-      setEditingCell(null);
-    }
   };
 
   // Add DueBill handlers
@@ -481,178 +741,15 @@ const MainPage = ({ token }: MainPageProps) => {
               <tr>
                 <th>Type</th>
                 <th>Name</th>
-                <th>Amount/Balance</th>
                 <th>Pay Date</th>
                 <th>Due Date</th>
                 <th>Status</th>
                 <th>Account</th>
+                <th>Amount/Balance</th>
               </tr>
             </thead>
             <tbody>
-              {combinedRows.map(row => (
-                <tr
-                  key={row.type + '-' + row.id}
-                  style={{
-                    background: row.statusObj?.highlight_color || undefined,
-                    color: row.accountObj?.font_color || undefined,
-                  }}
-                >
-                  {/* Type */}
-                  <td style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}>{row.type === 'DueBill' ? 'Due Bill' : 'Account Instance'}</td>
-                  {/* Name */}
-                  <td
-                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
-                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'name', row.type === 'DueBill' ? row.bill : row.bank_account)}
-                  >
-                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'name' ? (
-                      <select
-                        value={editingCell.value}
-                        onChange={handleEditInputChange}
-                        onBlur={handleEditInputBlur}
-                        onKeyDown={handleEditInputKeyDown}
-                        autoFocus
-                        className="input input-bordered"
-                        disabled={savingEdit}
-                      >
-                        <option value="">Select</option>
-                        {(row.type === 'DueBill' ? bills : accounts).map(opt => (
-                          <option key={opt.id} value={opt.id}>{opt.name}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      row.name
-                    )}
-                  </td>
-                  {/* Amount/Balance */}
-                  <td
-                    style={{
-                      ...(row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}),
-                      textAlign: 'right',
-                    }}
-                    onDoubleClick={() => handleCellDoubleClick(row, row.type, row.type === 'DueBill' ? 'amount_due' : 'balance', row.type === 'DueBill' ? row.amount_due : row.balance)}
-                  >
-                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === (row.type === 'DueBill' ? 'amount_due' : 'balance') ? (
-                      <input
-                        type="number"
-                        value={editingCell.value}
-                        onChange={handleEditInputChange}
-                        onBlur={handleEditInputBlur}
-                        onKeyDown={handleEditInputKeyDown}
-                        autoFocus
-                        className="input input-bordered"
-                        disabled={savingEdit}
-                      />
-                    ) : (
-                      (() => {
-                        const value = row.type === 'DueBill' ? row.amount_due : row.balance;
-                        const num = Number(value);
-                        if (!isNaN(num)) {
-                          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
-                        }
-                        return value;
-                      })()
-                    )}
-                  </td>
-                  {/* Pay Date */}
-                  <td
-                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
-                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'pay_date', row.pay_date || '')}
-                  >
-                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'pay_date' ? (
-                      <input
-                        type="date"
-                        value={editingCell.value || ''}
-                        onChange={handleEditInputChange}
-                        onBlur={handleEditInputBlur}
-                        onKeyDown={handleEditInputKeyDown}
-                        autoFocus
-                        className="input input-bordered"
-                        disabled={savingEdit}
-                      />
-                    ) : (
-                      row.pay_date
-                        ? (() => {
-                            const d = new Date(row.pay_date);
-                            if (!isNaN(d.getTime())) {
-                              return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
-                            }
-                            return row.pay_date;
-                          })()
-                        : '-'
-                    )}
-                  </td>
-                  {/* Due Date */}
-                  <td
-                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
-                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'due_date', row.due_date)}
-                  >
-                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'due_date' ? (
-                      <input
-                        type="date"
-                        value={editingCell.value}
-                        onChange={handleEditInputChange}
-                        onBlur={handleEditInputBlur}
-                        onKeyDown={handleEditInputKeyDown}
-                        autoFocus
-                        className="input input-bordered"
-                        disabled={savingEdit}
-                      />
-                    ) : (
-                      (() => {
-                        const d = new Date(row.due_date);
-                        if (!isNaN(d.getTime())) {
-                          return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
-                        }
-                        return row.due_date;
-                      })()
-                    )}
-                  </td>
-                  {/* Status */}
-                  <td
-                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
-                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'status', row.statusObj?.id || '')}
-                  >
-                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'status' ? (
-                      <select
-                        value={editingCell.value}
-                        onChange={handleEditInputChange}
-                        onBlur={handleEditInputBlur}
-                        onKeyDown={handleEditInputKeyDown}
-                        autoFocus
-                        className="input input-bordered"
-                        disabled={savingEdit}
-                      >
-                        <option value="">Select status</option>
-                        {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
-                    ) : (
-                      row.statusObj?.name || '-'
-                    )}
-                  </td>
-                  {/* Account */}
-                  <td
-                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
-                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'account', row.accountObj?.id || '')}
-                  >
-                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'account' ? (
-                      <select
-                        value={editingCell.value}
-                        onChange={handleEditInputChange}
-                        onBlur={handleEditInputBlur}
-                        onKeyDown={handleEditInputKeyDown}
-                        autoFocus
-                        className="input input-bordered"
-                        disabled={savingEdit}
-                      >
-                        <option value="">Select account</option>
-                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                      </select>
-                    ) : (
-                      row.accountObj?.name || '-'
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {rowsWithSubtotals}
             </tbody>
           </table>
         </div>
