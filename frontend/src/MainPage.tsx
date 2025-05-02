@@ -89,6 +89,13 @@ const MainPage = ({ token }: MainPageProps) => {
   });
   const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
   const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
+  const [editingCell, setEditingCell] = useState<{
+    rowId: number;
+    type: 'DueBill' | 'BankAccountInstance';
+    field: string;
+    value: string | number;
+  } | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Fetch all data
   useEffect(() => {
@@ -143,6 +150,97 @@ const MainPage = ({ token }: MainPageProps) => {
     if (a.due_date !== b.due_date) return a.due_date.localeCompare(b.due_date);
     return (a.priority ?? 0) - (b.priority ?? 0);
   });
+
+  // Save edit handler
+  const handleSaveEdit = async () => {
+    if (!editingCell) return;
+    setSavingEdit(true);
+    try {
+      if (editingCell.type === 'DueBill') {
+        // Find the original row
+        const row = dueBills.find(d => d.id === editingCell.rowId);
+        if (!row) return;
+        // Prepare payload
+        const payload: Record<string, unknown> = { ...row };
+        if (editingCell.field === 'name') {
+          // Changing bill
+          payload.bill = parseInt(editingCell.value as string);
+        } else if (editingCell.field === 'account') {
+          payload.draft_account = editingCell.value ? parseInt(editingCell.value as string) : null;
+        } else if (editingCell.field === 'status') {
+          payload.status = editingCell.value ? parseInt(editingCell.value as string) : null;
+        } else if (editingCell.field === 'recurrence') {
+          payload.recurrence = editingCell.value ? parseInt(editingCell.value as string) : null;
+        } else {
+          payload[editingCell.field] = editingCell.value;
+        }
+        // Remove non-editable fields
+        delete payload.id;
+        // Save
+        await axios.patch(`/api/duebills/${row.id}/`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      } else {
+        // BankAccountInstance
+        const row = bankInstances.find(b => b.id === editingCell.rowId);
+        if (!row) return;
+        const payload: Record<string, unknown> = { ...row };
+        if (editingCell.field === 'name' || editingCell.field === 'account') {
+          payload.bank_account = parseInt(editingCell.value as string);
+        } else if (editingCell.field === 'status') {
+          payload.status = editingCell.value ? parseInt(editingCell.value as string) : null;
+        } else {
+          payload[editingCell.field] = editingCell.value;
+        }
+        delete payload.id;
+        await axios.patch(`/api/bankaccountinstances/${row.id}/`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      }
+      // Refresh data
+      setLoading(true);
+      Promise.all([
+        axios.get('/api/duebills/', { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get('/api/bankaccountinstances/', { headers: { Authorization: `Bearer ${token}` } })
+      ]).then(([dueBillsRes, bankInstancesRes]) => {
+        setDueBills(dueBillsRes.data);
+        setBankInstances(bankInstancesRes.data);
+        setLoading(false);
+      });
+      setEditingCell(null);
+    } catch {
+      // Optionally show error
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Handle cell double click
+  const handleCellDoubleClick = (
+    row: {
+      id: number;
+      type: 'DueBill' | 'BankAccountInstance';
+    },
+    type: 'DueBill' | 'BankAccountInstance',
+    field: string,
+    value: string | number
+  ) => {
+    setEditingCell({ rowId: row.id, type, field, value });
+  };
+
+  // Handle edit input change
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (!editingCell) return;
+    setEditingCell({ ...editingCell, value: e.target.value });
+  };
+
+  // Handle blur or Enter
+  const handleEditInputBlur = () => {
+    handleSaveEdit();
+  };
+  const handleEditInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      setEditingCell(null);
+    }
+  };
 
   // Add DueBill handlers
   const handleAddDueBillChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -398,12 +496,111 @@ const MainPage = ({ token }: MainPageProps) => {
                     color: row.accountObj?.font_color || undefined,
                   }}
                 >
+                  {/* Type */}
                   <td>{row.type === 'DueBill' ? 'Due Bill' : 'Account Instance'}</td>
-                  <td>{row.name}</td>
-                  <td>{row.type === 'DueBill' ? row.amount_due : row.balance}</td>
-                  <td>{row.due_date}</td>
-                  <td>{row.statusObj?.name || '-'}</td>
-                  <td>{row.accountObj?.name || '-'}</td>
+                  {/* Name */}
+                  <td
+                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'name', row.type === 'DueBill' ? row.bill : row.bank_account)}
+                  >
+                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'name' ? (
+                      <select
+                        value={editingCell.value}
+                        onChange={handleEditInputChange}
+                        onBlur={handleEditInputBlur}
+                        onKeyDown={handleEditInputKeyDown}
+                        autoFocus
+                        className="input input-bordered"
+                        disabled={savingEdit}
+                      >
+                        <option value="">Select</option>
+                        {(row.type === 'DueBill' ? bills : accounts).map(opt => (
+                          <option key={opt.id} value={opt.id}>{opt.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      row.name
+                    )}
+                  </td>
+                  {/* Amount/Balance */}
+                  <td
+                    onDoubleClick={() => handleCellDoubleClick(row, row.type, row.type === 'DueBill' ? 'amount_due' : 'balance', row.type === 'DueBill' ? row.amount_due : row.balance)}
+                  >
+                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === (row.type === 'DueBill' ? 'amount_due' : 'balance') ? (
+                      <input
+                        type="number"
+                        value={editingCell.value}
+                        onChange={handleEditInputChange}
+                        onBlur={handleEditInputBlur}
+                        onKeyDown={handleEditInputKeyDown}
+                        autoFocus
+                        className="input input-bordered"
+                        disabled={savingEdit}
+                      />
+                    ) : (
+                      row.type === 'DueBill' ? row.amount_due : row.balance
+                    )}
+                  </td>
+                  {/* Due Date */}
+                  <td
+                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'due_date', row.due_date)}
+                  >
+                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'due_date' ? (
+                      <input
+                        type="date"
+                        value={editingCell.value}
+                        onChange={handleEditInputChange}
+                        onBlur={handleEditInputBlur}
+                        onKeyDown={handleEditInputKeyDown}
+                        autoFocus
+                        className="input input-bordered"
+                        disabled={savingEdit}
+                      />
+                    ) : (
+                      row.due_date
+                    )}
+                  </td>
+                  {/* Status */}
+                  <td
+                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'status', row.statusObj?.id || '')}
+                  >
+                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'status' ? (
+                      <select
+                        value={editingCell.value}
+                        onChange={handleEditInputChange}
+                        onBlur={handleEditInputBlur}
+                        onKeyDown={handleEditInputKeyDown}
+                        autoFocus
+                        className="input input-bordered"
+                        disabled={savingEdit}
+                      >
+                        <option value="">Select status</option>
+                        {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    ) : (
+                      row.statusObj?.name || '-'
+                    )}
+                  </td>
+                  {/* Account */}
+                  <td
+                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'account', row.accountObj?.id || '')}
+                  >
+                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'account' ? (
+                      <select
+                        value={editingCell.value}
+                        onChange={handleEditInputChange}
+                        onBlur={handleEditInputBlur}
+                        onKeyDown={handleEditInputKeyDown}
+                        autoFocus
+                        className="input input-bordered"
+                        disabled={savingEdit}
+                      >
+                        <option value="">Select account</option>
+                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                      </select>
+                    ) : (
+                      row.accountObj?.name || '-'
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
