@@ -482,6 +482,7 @@ const MainPage = ({ token }: MainPageProps) => {
                 <th>Type</th>
                 <th>Name</th>
                 <th>Amount/Balance</th>
+                <th>Pay Date</th>
                 <th>Due Date</th>
                 <th>Status</th>
                 <th>Account</th>
@@ -497,9 +498,10 @@ const MainPage = ({ token }: MainPageProps) => {
                   }}
                 >
                   {/* Type */}
-                  <td>{row.type === 'DueBill' ? 'Due Bill' : 'Account Instance'}</td>
+                  <td style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}>{row.type === 'DueBill' ? 'Due Bill' : 'Account Instance'}</td>
                   {/* Name */}
                   <td
+                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
                     onDoubleClick={() => handleCellDoubleClick(row, row.type, 'name', row.type === 'DueBill' ? row.bill : row.bank_account)}
                   >
                     {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'name' ? (
@@ -523,6 +525,10 @@ const MainPage = ({ token }: MainPageProps) => {
                   </td>
                   {/* Amount/Balance */}
                   <td
+                    style={{
+                      ...(row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}),
+                      textAlign: 'right',
+                    }}
                     onDoubleClick={() => handleCellDoubleClick(row, row.type, row.type === 'DueBill' ? 'amount_due' : 'balance', row.type === 'DueBill' ? row.amount_due : row.balance)}
                   >
                     {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === (row.type === 'DueBill' ? 'amount_due' : 'balance') ? (
@@ -537,11 +543,47 @@ const MainPage = ({ token }: MainPageProps) => {
                         disabled={savingEdit}
                       />
                     ) : (
-                      row.type === 'DueBill' ? row.amount_due : row.balance
+                      (() => {
+                        const value = row.type === 'DueBill' ? row.amount_due : row.balance;
+                        const num = Number(value);
+                        if (!isNaN(num)) {
+                          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+                        }
+                        return value;
+                      })()
+                    )}
+                  </td>
+                  {/* Pay Date */}
+                  <td
+                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
+                    onDoubleClick={() => handleCellDoubleClick(row, row.type, 'pay_date', row.pay_date || '')}
+                  >
+                    {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'pay_date' ? (
+                      <input
+                        type="date"
+                        value={editingCell.value || ''}
+                        onChange={handleEditInputChange}
+                        onBlur={handleEditInputBlur}
+                        onKeyDown={handleEditInputKeyDown}
+                        autoFocus
+                        className="input input-bordered"
+                        disabled={savingEdit}
+                      />
+                    ) : (
+                      row.pay_date
+                        ? (() => {
+                            const d = new Date(row.pay_date);
+                            if (!isNaN(d.getTime())) {
+                              return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                            }
+                            return row.pay_date;
+                          })()
+                        : '-'
                     )}
                   </td>
                   {/* Due Date */}
                   <td
+                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
                     onDoubleClick={() => handleCellDoubleClick(row, row.type, 'due_date', row.due_date)}
                   >
                     {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'due_date' ? (
@@ -556,11 +598,18 @@ const MainPage = ({ token }: MainPageProps) => {
                         disabled={savingEdit}
                       />
                     ) : (
-                      row.due_date
+                      (() => {
+                        const d = new Date(row.due_date);
+                        if (!isNaN(d.getTime())) {
+                          return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                        }
+                        return row.due_date;
+                      })()
                     )}
                   </td>
                   {/* Status */}
                   <td
+                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
                     onDoubleClick={() => handleCellDoubleClick(row, row.type, 'status', row.statusObj?.id || '')}
                   >
                     {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'status' ? (
@@ -582,6 +631,7 @@ const MainPage = ({ token }: MainPageProps) => {
                   </td>
                   {/* Account */}
                   <td
+                    style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
                     onDoubleClick={() => handleCellDoubleClick(row, row.type, 'account', row.accountObj?.id || '')}
                   >
                     {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'account' ? (
