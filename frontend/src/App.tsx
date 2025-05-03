@@ -8,6 +8,7 @@ import RecurrencesPage from './RecurrencesPage';
 import CategoriesPage from './CategoriesPage';
 import BankAccountsPage from './BankAccountsPage';
 import MainPage from './MainPage';
+import React from 'react';
 
 function App() {
   const [username, setUsername] = useState('');
@@ -16,6 +17,20 @@ function App() {
   const [refreshToken, setRefreshToken] = useState<string | null>(localStorage.getItem('refreshToken'));
   const [loginError, setLoginError] = useState<string | null>(null);
   const [authMessage] = useState<string | null>(sessionStorage.getItem('authMessage'));
+  const [configureOpen, setConfigureOpen] = useState(false);
+  const configureRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  React.useEffect(() => {
+    if (!configureOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (configureRef.current && !configureRef.current.contains(e.target as Node)) {
+        setConfigureOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [configureOpen]);
 
   // Axios interceptor for silent refresh
   useEffect(() => {
@@ -117,15 +132,28 @@ function App() {
           {/* Tab Navigation */}
           <div className="tabs mb-8 flex gap-2 items-center">
             <NavLink to="/" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Home</NavLink>
-            <div className="dropdown dropdown-hover">
-              <label tabIndex={0} className="tab cursor-pointer">Configure</label>
-              <ul tabIndex={0} className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 z-50">
-                <li><NavLink to="/bills" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Bills</NavLink></li>
-                <li><NavLink to="/statuses" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Statuses</NavLink></li>
-                <li><NavLink to="/bankaccounts" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Bank Accounts</NavLink></li>
-                <li><NavLink to="/categories" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Categories</NavLink></li>
-                <li><NavLink to="/recurrences" className={({ isActive }: { isActive: boolean }) => isActive ? 'active' : ''}>Recurrences</NavLink></li>
-              </ul>
+            <div className="dropdown" id="configure-dropdown" ref={configureRef}>
+              <button
+                type="button"
+                className="tab cursor-pointer"
+                onClick={() => setConfigureOpen((open) => !open)}
+                aria-expanded={configureOpen}
+              >
+                Configure
+              </button>
+              {configureOpen && (
+                <ul
+                  tabIndex={0}
+                  className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 z-50"
+                  onClick={() => setConfigureOpen(false)}
+                >
+                  <li><NavLink to="/bills">Bills</NavLink></li>
+                  <li><NavLink to="/statuses">Statuses</NavLink></li>
+                  <li><NavLink to="/bankaccounts">Bank Accounts</NavLink></li>
+                  <li><NavLink to="/categories">Categories</NavLink></li>
+                  <li><NavLink to="/recurrences">Recurrences</NavLink></li>
+                </ul>
+              )}
             </div>
           </div>
           <Routes>
