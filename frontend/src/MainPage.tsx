@@ -6,6 +6,11 @@ import MainTableRow from './components/MainTableRow';
 import SubtotalRow from './components/SubtotalRow';
 import useMainPageData from './hooks/useMainPageData';
 import useEditableCell from './hooks/useEditableCell';
+import AddBankAccountModal from './components/AddBankAccountModal';
+import AddCategoryModal from './components/AddCategoryModal';
+import AddRecurrenceModal from './components/AddRecurrenceModal';
+import AddStatusModal from './components/AddStatusModal';
+import AddBillModal from './components/AddBillModal';
 
 interface MainPageProps {
   token: string;
@@ -14,7 +19,7 @@ interface MainPageProps {
 const MainPage = ({ token }: MainPageProps) => {
   // Fetch all main data and provide refresh, loading, error
   const {
-    dueBills, bankInstances, accounts, bills, statuses, recurrences, loading, error, refresh
+    dueBills, bankInstances, accounts, bills, statuses, recurrences, categories, loading, error, refresh
   } = useMainPageData(token);
 
   // Local state for add modals and forms
@@ -31,6 +36,11 @@ const MainPage = ({ token }: MainPageProps) => {
   });
   const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
   const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
+  const [showAddBillModal, setShowAddBillModal] = useState(false);
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [showAddStatusModal, setShowAddStatusModal] = useState(false);
+  const [showAddRecurrenceModal, setShowAddRecurrenceModal] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
 
   // Inline cell editing logic (encapsulated in custom hook)
   const {
@@ -248,6 +258,10 @@ const MainPage = ({ token }: MainPageProps) => {
           recurrences={recurrences}
           accounts={accounts}
           statuses={statuses}
+          onAddBill={() => setShowAddBillModal(true)}
+          onAddRecurrence={() => setShowAddRecurrenceModal(true)}
+          onAddAccount={() => setShowAddAccountModal(true)}
+          onAddStatus={() => setShowAddStatusModal(true)}
         />
       )}
       {/* Add Bank Account Instance Modal */}
@@ -262,6 +276,51 @@ const MainPage = ({ token }: MainPageProps) => {
           loading={addBankInstanceLoading}
           accounts={accounts}
           statuses={statuses}
+          onAddAccount={() => setShowAddAccountModal(true)}
+          onAddStatus={() => setShowAddStatusModal(true)}
+        />
+      )}
+      {showAddBillModal && (
+        <AddBillModal
+          show={showAddBillModal}
+          onClose={() => setShowAddBillModal(false)}
+          token={token}
+          accounts={accounts}
+          categories={categories}
+          recurrences={recurrences}
+          onAdded={refresh}
+        />
+      )}
+      {showAddAccountModal && (
+        <AddBankAccountModal
+          show={showAddAccountModal}
+          onClose={() => setShowAddAccountModal(false)}
+          token={token}
+          onAdded={refresh}
+        />
+      )}
+      {showAddStatusModal && (
+        <AddStatusModal
+          show={showAddStatusModal}
+          onClose={() => setShowAddStatusModal(false)}
+          token={token}
+          onAdded={refresh}
+        />
+      )}
+      {showAddRecurrenceModal && (
+        <AddRecurrenceModal
+          show={showAddRecurrenceModal}
+          onClose={() => setShowAddRecurrenceModal(false)}
+          token={token}
+          onAdded={refresh}
+        />
+      )}
+      {showAddCategoryModal && (
+        <AddCategoryModal
+          show={showAddCategoryModal}
+          onClose={() => setShowAddCategoryModal(false)}
+          token={token}
+          onAdded={refresh}
         />
       )}
       {loading && <div className="flex justify-center"><span className="loading loading-spinner loading-lg"></span></div>}
@@ -325,6 +384,9 @@ const MainPage = ({ token }: MainPageProps) => {
                       accounts={accounts}
                       statuses={statuses}
                       onDelete={handleDeleteRow}
+                      onAddBill={() => setShowAddBillModal(true)}
+                      onAddAccount={() => setShowAddAccountModal(true)}
+                      onAddStatus={() => setShowAddStatusModal(true)}
                     />
                   );
                   // For due bills, mark as rendered

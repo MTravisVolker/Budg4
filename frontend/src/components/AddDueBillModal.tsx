@@ -22,6 +22,10 @@ interface AddDueBillModalProps {
   recurrences: Recurrence[];
   accounts: BankAccount[];
   statuses: Status[];
+  onAddBill?: () => void;
+  onAddRecurrence?: () => void;
+  onAddAccount?: () => void;
+  onAddStatus?: () => void;
 }
 
 const AddDueBillModal: React.FC<AddDueBillModalProps> = ({
@@ -36,6 +40,10 @@ const AddDueBillModal: React.FC<AddDueBillModalProps> = ({
   recurrences,
   accounts,
   statuses,
+  onAddBill,
+  onAddRecurrence,
+  onAddAccount,
+  onAddStatus,
 }) => {
   if (!show) return null;
   return (
@@ -50,17 +58,35 @@ const AddDueBillModal: React.FC<AddDueBillModalProps> = ({
         <h2 className="font-bold text-xl mb-4">Add Due Bill</h2>
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
           <div className="form-control">
-            <label className="label"><span className="label-text">Bill</span></label>
-            <select name="bill" value={form.bill} onChange={onChange} required className="input input-bordered">
+            <label className="label"><span className="label-text">Bill</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddBill}>Add</button>
+            </label>
+            <select name="bill" value={form.bill} onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddBill && onAddBill();
+              } else {
+                onChange(e);
+              }
+            }} required className="input input-bordered">
               <option value="">Select bill</option>
               {bills.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
-            <label className="label"><span className="label-text">Recurrence</span></label>
-            <select name="recurrence" value={form.recurrence} onChange={onChange} className="input input-bordered">
+            <label className="label"><span className="label-text">Recurrence</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddRecurrence}>Add</button>
+            </label>
+            <select name="recurrence" value={form.recurrence} onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddRecurrence && onAddRecurrence();
+              } else {
+                onChange(e);
+              }
+            }} className="input input-bordered">
               <option value="">Select recurrence</option>
               {recurrences?.map?.(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
@@ -68,10 +94,19 @@ const AddDueBillModal: React.FC<AddDueBillModalProps> = ({
             <input name="amount_due" value={form.amount_due} onChange={onChange} required type="number" step="0.01" className="input input-bordered" />
           </div>
           <div className="form-control">
-            <label className="label"><span className="label-text">Draft Account</span></label>
-            <select name="draft_account" value={form.draft_account} onChange={onChange} className="input input-bordered">
+            <label className="label"><span className="label-text">Draft Account</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddAccount}>Add</button>
+            </label>
+            <select name="draft_account" value={form.draft_account} onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddAccount && onAddAccount();
+              } else {
+                onChange(e);
+              }
+            }} className="input input-bordered">
               <option value="">Select account</option>
               {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
@@ -83,10 +118,19 @@ const AddDueBillModal: React.FC<AddDueBillModalProps> = ({
             <input name="pay_date" value={form.pay_date} onChange={onChange} type="date" className="input input-bordered" />
           </div>
           <div className="form-control">
-            <label className="label"><span className="label-text">Status</span></label>
-            <select name="status" value={form.status} onChange={onChange} className="input input-bordered">
+            <label className="label"><span className="label-text">Status</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddStatus}>Add</button>
+            </label>
+            <select name="status" value={form.status} onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddStatus && onAddStatus();
+              } else {
+                onChange(e);
+              }
+            }} className="input input-bordered">
               <option value="">Select status</option>
               {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
