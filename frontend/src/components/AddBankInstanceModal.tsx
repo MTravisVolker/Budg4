@@ -10,6 +10,7 @@ interface AddBankInstanceModalProps {
     due_date: string;
     pay_date: string;
     status: string;
+    priority?: string;
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -85,6 +86,10 @@ const AddBankInstanceModal: React.FC<AddBankInstanceModalProps> = ({
               {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               <option value="__add__">Add new…</option>
             </select>
+          </div>
+          <div className="form-control">
+            <label className="label"><span className="label-text">Priority</span></label>
+            <input name="priority" value={form.priority || ''} onChange={onChange} type="number" className="input input-bordered" />
           </div>
           <div className="flex gap-2 mt-2">
             <button type="submit" disabled={loading} className="btn btn-primary w-full">Add</button>
