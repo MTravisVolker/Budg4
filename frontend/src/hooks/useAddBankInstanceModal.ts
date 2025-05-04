@@ -4,7 +4,7 @@ import { addBankAccountInstance } from '../api/dueBillApi';
 export default function useAddBankInstanceModal(token: string, refresh: () => void) {
   const [showAddBankInstance, setShowAddBankInstance] = useState(false);
   const [addBankInstanceForm, setAddBankInstanceForm] = useState({
-    bank_account: '', balance: '', due_date: '', pay_date: '', status: '',
+    bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0',
   });
   const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
   const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
@@ -32,10 +32,11 @@ export default function useAddBankInstanceModal(token: string, refresh: () => vo
       due_date: addBankInstanceForm.due_date,
       pay_date: addBankInstanceForm.pay_date || null,
       status: addBankInstanceForm.status ? parseInt(addBankInstanceForm.status) : null,
+      priority: addBankInstanceForm.priority ? parseInt(addBankInstanceForm.priority) : 0,
     }, token)
       .then(() => {
         setShowAddBankInstance(false);
-        setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '' });
+        setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0' });
         setAddBankInstanceLoading(false);
         refresh();
       })

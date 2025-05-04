@@ -187,6 +187,26 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
         row.accountObj?.name || '-'
       )}
     </td>
+    {/* Priority */}
+    <td
+      style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
+      onDoubleClick={() => handleCellDoubleClick(row, row.type, 'priority', row.priority)}
+    >
+      {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'priority' ? (
+        <input
+          type="number"
+          value={editingCell.value}
+          onChange={handleEditInputChange}
+          onBlur={handleEditInputBlur}
+          onKeyDown={handleEditInputKeyDown}
+          autoFocus
+          className="input input-bordered"
+          disabled={savingEdit}
+        />
+      ) : (
+        typeof row.priority === 'number' ? row.priority : '-'
+      )}
+    </td>
     {/* Amount/Balance */}
     <td
       style={{

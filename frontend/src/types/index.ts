@@ -17,6 +17,7 @@ export interface BankAccountInstance {
   due_date: string;
   pay_date: string | null;
   status: number | null;
+  priority: number;
 }
 
 export interface BankAccount {
