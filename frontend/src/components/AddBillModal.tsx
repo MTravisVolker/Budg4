@@ -9,9 +9,12 @@ interface AddBillModalProps {
   categories: { id: number; name: string }[];
   recurrences: { id: number; name: string }[];
   onAdded?: () => void;
+  onAddAccount?: () => void;
+  onAddCategory?: () => void;
+  onAddRecurrence?: () => void;
 }
 
-const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accounts, categories, recurrences, onAdded }) => {
+const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accounts, categories, recurrences, onAdded, onAddAccount, onAddCategory, onAddRecurrence }) => {
   const [form, setForm] = useState({
     name: '',
     default_amount_due: '',
@@ -60,7 +63,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
         });
         setFormLoading(false);
         onClose();
-        onAdded && onAdded();
+        if (onAdded) onAdded();
       })
       .catch(() => {
         setFormError('Failed to add bill');
@@ -100,34 +103,61 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
           <div className="form-control">
             <label className="label">
               <span className="label-text">Draft Account</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddAccount}>Add</button>
             </label>
-            <select name="draft_account" value={form.draft_account} onChange={handleFormChange} className="input input-bordered">
+            <select name="draft_account" value={form.draft_account} onChange={e => {
+              if (e.target.value === '__add__') {
+                if (onAddAccount) onAddAccount();
+                setForm({ ...form, draft_account: '' });
+              } else {
+                handleFormChange(e);
+              }
+            }} className="input input-bordered">
               <option value="">Select account</option>
               {accounts.map(acc => (
                 <option key={acc.id} value={acc.id}>{acc.name}</option>
               ))}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
             <label className="label">
               <span className="label-text">Category</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddCategory}>Add</button>
             </label>
-            <select name="category" value={form.category} onChange={handleFormChange} className="input input-bordered">
+            <select name="category" value={form.category} onChange={e => {
+              if (e.target.value === '__add__') {
+                if (onAddCategory) onAddCategory();
+                setForm({ ...form, category: '' });
+              } else {
+                handleFormChange(e);
+              }
+            }} className="input input-bordered">
               <option value="">Select category</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
             <label className="label">
               <span className="label-text">Recurrence</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddRecurrence}>Add</button>
             </label>
-            <select name="recurrence" value={form.recurrence} onChange={handleFormChange} className="input input-bordered">
+            <select name="recurrence" value={form.recurrence} onChange={e => {
+              if (e.target.value === '__add__') {
+                if (onAddRecurrence) onAddRecurrence();
+                setForm({ ...form, recurrence: '' });
+              } else {
+                handleFormChange(e);
+              }
+            }} className="input input-bordered">
               <option value="">Select recurrence</option>
               {recurrences.map(rec => (
                 <option key={rec.id} value={rec.id}>{rec.name}</option>
               ))}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
