@@ -54,6 +54,9 @@ const BillsPage = ({ token }: BillsPageProps) => {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [recurrences, setRecurrences] = useState<Recurrence[]>([]);
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showAddRecurrenceModal, setShowAddRecurrenceModal] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -286,34 +289,61 @@ const BillsPage = ({ token }: BillsPageProps) => {
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Draft Account</span>
+                  <button type="button" className="btn btn-xs btn-link ml-2" onClick={() => setShowAddAccountModal(true)}>Add</button>
                 </label>
-                <select name="draft_account" value={addForm.draft_account} onChange={handleAddChange} className="input input-bordered">
+                <select name="draft_account" value={addForm.draft_account} onChange={e => {
+                  if (e.target.value === '__add__') {
+                    setShowAddAccountModal(true);
+                    setAddForm({ ...addForm, draft_account: '' });
+                  } else {
+                    handleAddChange(e);
+                  }
+                }} className="input input-bordered">
                   <option value="">Select account</option>
                   {accounts.map(acc => (
                     <option key={acc.id} value={acc.id}>{acc.name}</option>
                   ))}
+                  <option value="__add__">Add new…</option>
                 </select>
               </div>
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Category</span>
+                  <button type="button" className="btn btn-xs btn-link ml-2" onClick={() => setShowAddCategoryModal(true)}>Add</button>
                 </label>
-                <select name="category" value={addForm.category} onChange={handleAddChange} className="input input-bordered">
+                <select name="category" value={addForm.category} onChange={e => {
+                  if (e.target.value === '__add__') {
+                    setShowAddCategoryModal(true);
+                    setAddForm({ ...addForm, category: '' });
+                  } else {
+                    handleAddChange(e);
+                  }
+                }} className="input input-bordered">
                   <option value="">Select category</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
+                  <option value="__add__">Add new…</option>
                 </select>
               </div>
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Recurrence</span>
+                  <button type="button" className="btn btn-xs btn-link ml-2" onClick={() => setShowAddRecurrenceModal(true)}>Add</button>
                 </label>
-                <select name="recurrence" value={addForm.recurrence} onChange={handleAddChange} className="input input-bordered">
+                <select name="recurrence" value={addForm.recurrence} onChange={e => {
+                  if (e.target.value === '__add__') {
+                    setShowAddRecurrenceModal(true);
+                    setAddForm({ ...addForm, recurrence: '' });
+                  } else {
+                    handleAddChange(e);
+                  }
+                }} className="input input-bordered">
                   <option value="">Select recurrence</option>
                   {recurrences.map(rec => (
                     <option key={rec.id} value={rec.id}>{rec.name}</option>
                   ))}
+                  <option value="__add__">Add new…</option>
                 </select>
               </div>
               <div className="form-control">

@@ -17,6 +17,8 @@ interface AddBankInstanceModalProps {
   error: string | null;
   accounts: BankAccount[];
   statuses: Status[];
+  onAddAccount?: () => void;
+  onAddStatus?: () => void;
 }
 
 const AddBankInstanceModal: React.FC<AddBankInstanceModalProps> = ({
@@ -29,6 +31,8 @@ const AddBankInstanceModal: React.FC<AddBankInstanceModalProps> = ({
   error,
   accounts,
   statuses,
+  onAddAccount,
+  onAddStatus,
 }) => {
   if (!show) return null;
   return (
@@ -43,10 +47,19 @@ const AddBankInstanceModal: React.FC<AddBankInstanceModalProps> = ({
         <h2 className="font-bold text-xl mb-4">Add Bank Account Instance</h2>
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
           <div className="form-control">
-            <label className="label"><span className="label-text">Bank Account</span></label>
-            <select name="bank_account" value={form.bank_account} onChange={onChange} required className="input input-bordered">
+            <label className="label"><span className="label-text">Bank Account</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddAccount}>Add</button>
+            </label>
+            <select name="bank_account" value={form.bank_account} onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddAccount && onAddAccount();
+              } else {
+                onChange(e);
+              }
+            }} required className="input input-bordered">
               <option value="">Select account</option>
               {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="form-control">
@@ -58,10 +71,19 @@ const AddBankInstanceModal: React.FC<AddBankInstanceModalProps> = ({
             <input name="due_date" value={form.due_date} onChange={onChange} required type="date" className="input input-bordered" />
           </div>
           <div className="form-control">
-            <label className="label"><span className="label-text">Status</span></label>
-            <select name="status" value={form.status} onChange={onChange} className="input input-bordered">
+            <label className="label"><span className="label-text">Status</span>
+              <button type="button" className="btn btn-xs btn-link ml-2" onClick={onAddStatus}>Add</button>
+            </label>
+            <select name="status" value={form.status} onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddStatus && onAddStatus();
+              } else {
+                onChange(e);
+              }
+            }} className="input input-bordered">
               <option value="">Select status</option>
               {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="__add__">Add new…</option>
             </select>
           </div>
           <div className="flex gap-2 mt-2">

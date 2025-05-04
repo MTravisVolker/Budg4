@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { DueBill, BankAccountInstance, BankAccount, Bill, Status, Recurrence } from '../types';
+import { DueBill, BankAccountInstance, BankAccount, Bill, Status, Recurrence, Category } from '../types';
 
 export default function useMainPageData(token: string) {
   const [dueBills, setDueBills] = useState<DueBill[]>([]);
@@ -9,6 +9,7 @@ export default function useMainPageData(token: string) {
   const [bills, setBills] = useState<Bill[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [recurrences, setRecurrences] = useState<Recurrence[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,14 +23,16 @@ export default function useMainPageData(token: string) {
       axios.get('/api/bills/', { headers: { Authorization: `Bearer ${token}` } }),
       axios.get('/api/statuses/', { headers: { Authorization: `Bearer ${token}` } }),
       axios.get('/api/recurrences/', { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get('/api/categories/', { headers: { Authorization: `Bearer ${token}` } }),
     ])
-      .then(([dueBillsRes, bankInstancesRes, accountsRes, billsRes, statusesRes, recurrencesRes]) => {
+      .then(([dueBillsRes, bankInstancesRes, accountsRes, billsRes, statusesRes, recurrencesRes, categoriesRes]) => {
         setDueBills(dueBillsRes.data);
         setBankInstances(bankInstancesRes.data);
         setAccounts(accountsRes.data);
         setBills(billsRes.data);
         setStatuses(statusesRes.data);
         setRecurrences(recurrencesRes.data);
+        setCategories(categoriesRes.data);
         setLoading(false);
       })
       .catch(() => {
@@ -49,6 +52,7 @@ export default function useMainPageData(token: string) {
     bills,
     statuses,
     recurrences,
+    categories,
     loading,
     error,
     refresh: fetchAll,

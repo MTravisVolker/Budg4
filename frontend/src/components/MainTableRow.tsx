@@ -19,6 +19,9 @@ interface MainTableRowProps {
   accounts: BankAccount[];
   statuses: Status[];
   onDelete: (type: 'DueBill' | 'BankAccountInstance', id: number) => void;
+  onAddBill?: () => void;
+  onAddAccount?: () => void;
+  onAddStatus?: () => void;
 }
 
 const MainTableRow: React.FC<MainTableRowProps> = ({
@@ -33,6 +36,9 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
   accounts,
   statuses,
   onDelete,
+  onAddBill,
+  onAddAccount,
+  onAddStatus,
 }) => (
   <tr
     key={row.type + '-' + row.id}
@@ -49,20 +55,30 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
       onDoubleClick={() => handleCellDoubleClick(row, row.type, 'name', row.type === 'DueBill' ? row.bill : row.bank_account)}
     >
       {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'name' ? (
-        <select
-          value={editingCell.value}
-          onChange={handleEditInputChange}
-          onBlur={handleEditInputBlur}
-          onKeyDown={handleEditInputKeyDown}
-          autoFocus
-          className="input input-bordered"
-          disabled={savingEdit}
-        >
-          <option value="">Select</option>
-          {(row.type === 'DueBill' ? bills : accounts).map(opt => (
-            <option key={opt.id} value={opt.id}>{opt.name}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1">
+          <select
+            value={editingCell.value}
+            onChange={e => {
+              if (e.target.value === '__add__') {
+                row.type === 'DueBill' ? onAddBill && onAddBill() : onAddAccount && onAddAccount();
+              } else {
+                handleEditInputChange(e);
+              }
+            }}
+            onBlur={handleEditInputBlur}
+            onKeyDown={handleEditInputKeyDown}
+            autoFocus
+            className="input input-bordered"
+            disabled={savingEdit}
+          >
+            <option value="">Select</option>
+            {(row.type === 'DueBill' ? bills : accounts).map(opt => (
+              <option key={opt.id} value={opt.id}>{opt.name}</option>
+            ))}
+            <option value="__add__">Add new…</option>
+          </select>
+          <button type="button" className="btn btn-xs btn-link" onClick={row.type === 'DueBill' ? onAddBill : onAddAccount}>Add</button>
+        </div>
       ) : (
         row.name
       )}
@@ -113,18 +129,28 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
       onDoubleClick={() => handleCellDoubleClick(row, row.type, 'status', row.statusObj?.id || '')}
     >
       {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'status' ? (
-        <select
-          value={editingCell.value}
-          onChange={handleEditInputChange}
-          onBlur={handleEditInputBlur}
-          onKeyDown={handleEditInputKeyDown}
-          autoFocus
-          className="input input-bordered"
-          disabled={savingEdit}
-        >
-          <option value="">Select status</option>
-          {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <div className="flex items-center gap-1">
+          <select
+            value={editingCell.value}
+            onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddStatus && onAddStatus();
+              } else {
+                handleEditInputChange(e);
+              }
+            }}
+            onBlur={handleEditInputBlur}
+            onKeyDown={handleEditInputKeyDown}
+            autoFocus
+            className="input input-bordered"
+            disabled={savingEdit}
+          >
+            <option value="">Select status</option>
+            {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <option value="__add__">Add new…</option>
+          </select>
+          <button type="button" className="btn btn-xs btn-link" onClick={onAddStatus}>Add</button>
+        </div>
       ) : (
         row.statusObj?.name || '-'
       )}
@@ -135,18 +161,28 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
       onDoubleClick={() => handleCellDoubleClick(row, row.type, 'account', row.accountObj?.id || '')}
     >
       {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'account' ? (
-        <select
-          value={editingCell.value}
-          onChange={handleEditInputChange}
-          onBlur={handleEditInputBlur}
-          onKeyDown={handleEditInputKeyDown}
-          autoFocus
-          className="input input-bordered"
-          disabled={savingEdit}
-        >
-          <option value="">Select account</option>
-          {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-        </select>
+        <div className="flex items-center gap-1">
+          <select
+            value={editingCell.value}
+            onChange={e => {
+              if (e.target.value === '__add__') {
+                onAddAccount && onAddAccount();
+              } else {
+                handleEditInputChange(e);
+              }
+            }}
+            onBlur={handleEditInputBlur}
+            onKeyDown={handleEditInputKeyDown}
+            autoFocus
+            className="input input-bordered"
+            disabled={savingEdit}
+          >
+            <option value="">Select account</option>
+            {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+            <option value="__add__">Add new…</option>
+          </select>
+          <button type="button" className="btn btn-xs btn-link" onClick={onAddAccount}>Add</button>
+        </div>
       ) : (
         row.accountObj?.name || '-'
       )}
