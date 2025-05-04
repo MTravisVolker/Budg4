@@ -32,7 +32,10 @@ export default function useAddBankInstanceModal(token: string, refresh: () => vo
       due_date: addBankInstanceForm.due_date,
       pay_date: addBankInstanceForm.pay_date || null,
       status: addBankInstanceForm.status ? parseInt(addBankInstanceForm.status) : null,
-      priority: addBankInstanceForm.priority ? parseInt(addBankInstanceForm.priority) : 0,
+      priority: (() => {
+        const val = parseInt(addBankInstanceForm.priority, 10);
+        return isNaN(val) ? 0 : val;
+      })(),
     }, token)
       .then(() => {
         setShowAddBankInstance(false);
