@@ -1,9 +1,6 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useRef } from 'react';
 import AddDueBillModal from './components/AddDueBillModal';
 import AddBankInstanceModal from './components/AddBankInstanceModal';
-import MainTableRow from './components/MainTableRow';
-import SubtotalRow from './components/SubtotalRow';
 import useMainPageData from './hooks/useMainPageData';
 import useEditableCell from './hooks/useEditableCell';
 import AddBankAccountModal from './components/AddBankAccountModal';
@@ -11,6 +8,11 @@ import AddCategoryModal from './components/AddCategoryModal';
 import AddRecurrenceModal from './components/AddRecurrenceModal';
 import AddStatusModal from './components/AddStatusModal';
 import AddBillModal from './components/AddBillModal';
+import MainTableBody from './components/MainTableBody';
+import useAddDueBillModal from './hooks/useAddDueBillModal';
+import useAddBankInstanceModal from './hooks/useAddBankInstanceModal';
+import useModal from './hooks/useModal';
+import { editDueBill, editBankAccountInstance, deleteDueBill, deleteBankAccountInstance } from './api/dueBillApi';
 
 interface MainPageProps {
   token: string;
@@ -23,24 +25,37 @@ const MainPage = ({ token }: MainPageProps) => {
   } = useMainPageData(token);
 
   // Local state for add modals and forms
+  const {
+    showAddDueBill,
+    setShowAddDueBill,
+    addDueBillForm,
+    setAddDueBillForm,
+    addDueBillError,
+    addDueBillLoading,
+    handleAddDueBillChange,
+    handleAddDueBill,
+  } = useAddDueBillModal(token, bills, refresh);
+
+  const {
+    showAddBankInstance,
+    setShowAddBankInstance,
+    addBankInstanceForm,
+    addBankInstanceError,
+    addBankInstanceLoading,
+    handleAddBankInstanceChange,
+    handleAddBankInstance,
+  } = useAddBankInstanceModal(token, refresh);
+
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
-  const [showAddDueBill, setShowAddDueBill] = useState(false);
-  const [showAddBankInstance, setShowAddBankInstance] = useState(false);
-  const [addDueBillForm, setAddDueBillForm] = useState({
-    bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
-  });
-  const [addDueBillError, setAddDueBillError] = useState<string | null>(null);
-  const [addDueBillLoading, setAddDueBillLoading] = useState(false);
-  const [addBankInstanceForm, setAddBankInstanceForm] = useState({
-    bank_account: '', balance: '', due_date: '', pay_date: '', status: '',
-  });
-  const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
-  const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
-  const [showAddBillModal, setShowAddBillModal] = useState(false);
-  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
-  const [showAddStatusModal, setShowAddStatusModal] = useState(false);
-  const [showAddRecurrenceModal, setShowAddRecurrenceModal] = useState(false);
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showAddBillModal, openAddBillModal, closeAddBillModal] = useModal();
+  const [showAddAccountModal, openAddAccountModal, closeAddAccountModal] = useModal();
+  const [showAddStatusModal, openAddStatusModal, closeAddStatusModal] = useModal();
+  const [showAddRecurrenceModal, openAddRecurrenceModal, closeAddRecurrenceModal] = useModal();
+  const [showAddCategoryModal, , closeAddCategoryModal] = useModal();
+
+  // Track which modal to open and which field to pre-select
+  const [pendingAddField, setPendingAddField] = useState<null | 'bill' | 'recurrence' | 'account' | 'status'>(null);
+  const pendingFormRef = useRef<typeof addDueBillForm | null>(null);
 
   // Inline cell editing logic (encapsulated in custom hook)
   const {
@@ -49,36 +64,37 @@ const MainPage = ({ token }: MainPageProps) => {
   } = useEditableCell(async (editingCell) => {
     // Save edit handler for both DueBill and BankAccountInstance
     if (!editingCell) return;
-    if (editingCell.type === 'DueBill') {
-      const row = dueBills.find(d => d.id === editingCell.rowId);
+    const { rowId, type, field, value } = editingCell;
+    if (type === 'DueBill') {
+      const row = dueBills.find(d => d.id === rowId);
       if (!row) return;
       const payload: Record<string, unknown> = { ...row };
-      if (editingCell.field === 'name') {
-        payload.bill = parseInt(editingCell.value as string);
-      } else if (editingCell.field === 'account') {
-        payload.draft_account = editingCell.value ? parseInt(editingCell.value as string) : null;
-      } else if (editingCell.field === 'status') {
-        payload.status = editingCell.value ? parseInt(editingCell.value as string) : null;
-      } else if (editingCell.field === 'recurrence') {
-        payload.recurrence = editingCell.value ? parseInt(editingCell.value as string) : null;
+      if (field === 'name') {
+        payload.bill = parseInt(value as string);
+      } else if (field === 'account') {
+        payload.draft_account = value ? parseInt(value as string) : null;
+      } else if (field === 'status') {
+        payload.status = value ? parseInt(value as string) : null;
+      } else if (field === 'recurrence') {
+        payload.recurrence = value ? parseInt(value as string) : null;
       } else {
-        payload[editingCell.field] = editingCell.value;
+        payload[field] = value;
       }
       delete payload.id;
-      await axios.patch(`/api/duebills/${row.id}/`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      await editDueBill(row.id, payload, token);
     } else {
-      const row = bankInstances.find(b => b.id === editingCell.rowId);
+      const row = bankInstances.find(b => b.id === rowId);
       if (!row) return;
       const payload: Record<string, unknown> = { ...row };
-      if (editingCell.field === 'name' || editingCell.field === 'account') {
-        payload.bank_account = parseInt(editingCell.value as string);
-      } else if (editingCell.field === 'status') {
-        payload.status = editingCell.value ? parseInt(editingCell.value as string) : null;
+      if (field === 'name' || field === 'account') {
+        payload.bank_account = parseInt(value as string);
+      } else if (field === 'status') {
+        payload.status = value ? parseInt(value as string) : null;
       } else {
-        payload[editingCell.field] = editingCell.value;
+        payload[field] = value;
       }
       delete payload.id;
-      await axios.patch(`/api/bankaccountinstances/${row.id}/`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      await editBankAccountInstance(row.id, payload, token);
     }
     await refresh();
   });
@@ -123,102 +139,65 @@ const MainPage = ({ token }: MainPageProps) => {
     return aDue.localeCompare(bDue);
   });
 
-  // Add DueBill handlers
-  const handleAddDueBillChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    // If the bill is being changed, set defaults for recurrence and amount_due
-    if (name === 'bill') {
-      const selectedBill = bills.find(b => b.id === parseInt(value));
-      setAddDueBillForm(form => ({
-        ...form,
-        bill: value,
-        recurrence: selectedBill?.recurrence ? selectedBill.recurrence.toString() : '',
-        amount_due: selectedBill?.default_amount_due ? selectedBill.default_amount_due.toString() : '',
-      }));
-    } else {
-      setAddDueBillForm({ ...addDueBillForm, [name]: value });
-    }
-  };
-  const handleAddDueBill = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddDueBillError(null);
-    setAddDueBillLoading(true);
-    if (!addDueBillForm.bill || !addDueBillForm.amount_due || !addDueBillForm.due_date) {
-      setAddDueBillError('Bill, Amount Due, and Due Date are required');
-      setAddDueBillLoading(false);
-      return;
-    }
-    axios.post('/api/duebills/', {
-      bill: parseInt(addDueBillForm.bill),
-      recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
-      amount_due: parseFloat(addDueBillForm.amount_due),
-      draft_account: addDueBillForm.draft_account ? parseInt(addDueBillForm.draft_account) : null,
-      due_date: addDueBillForm.due_date,
-      pay_date: addDueBillForm.pay_date || null,
-      status: addDueBillForm.status ? parseInt(addDueBillForm.status) : null,
-      priority: addDueBillForm.priority ? parseInt(addDueBillForm.priority) : 0,
-    }, { headers: { Authorization: `Bearer ${token}` } })
-      .then(() => {
-        setShowAddDueBill(false);
-        setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
-        setAddDueBillLoading(false);
-        refresh();
-      })
-      .catch(() => {
-        setAddDueBillError('Failed to add due bill');
-        setAddDueBillLoading(false);
-      });
-  };
-
-  // Add BankAccountInstance handlers
-  const handleAddBankInstanceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (e.target.name === 'due_date') {
-      setAddBankInstanceForm({ ...addBankInstanceForm, due_date: e.target.value, pay_date: e.target.value });
-    } else {
-      setAddBankInstanceForm({ ...addBankInstanceForm, [e.target.name]: e.target.value });
-    }
-  };
-  const handleAddBankInstance = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddBankInstanceError(null);
-    setAddBankInstanceLoading(true);
-    if (!addBankInstanceForm.bank_account || !addBankInstanceForm.balance || !addBankInstanceForm.due_date) {
-      setAddBankInstanceError('Bank Account, Balance, and Due Date are required');
-      setAddBankInstanceLoading(false);
-      return;
-    }
-    axios.post('/api/bankaccountinstances/', {
-      bank_account: parseInt(addBankInstanceForm.bank_account),
-      balance: parseFloat(addBankInstanceForm.balance),
-      due_date: addBankInstanceForm.due_date,
-      pay_date: addBankInstanceForm.pay_date || null,
-      status: addBankInstanceForm.status ? parseInt(addBankInstanceForm.status) : null,
-    }, { headers: { Authorization: `Bearer ${token}` } })
-      .then(() => {
-        setShowAddBankInstance(false);
-        setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '' });
-        setAddBankInstanceLoading(false);
-        refresh();
-      })
-      .catch(() => {
-        setAddBankInstanceError('Failed to add bank account instance');
-        setAddBankInstanceLoading(false);
-      });
-  };
-
   // Delete row handler
   const handleDeleteRow = async (type: 'DueBill' | 'BankAccountInstance', id: number) => {
     if (!window.confirm('Are you sure you want to delete this row?')) return;
     try {
       if (type === 'DueBill') {
-        await axios.delete(`/api/duebills/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+        await deleteDueBill(id, token);
       } else {
-        await axios.delete(`/api/bankaccountinstances/${id}/`, { headers: { Authorization: `Bearer ${token}` } });
+        await deleteBankAccountInstance(id, token);
       }
       await refresh();
     } catch {
       alert('Failed to delete row.');
     }
+  };
+
+  // Helper to open the correct modal and close AddDueBillModal
+  const handleAddNewFromDueBill = (field: 'bill' | 'recurrence' | 'account' | 'status') => {
+    pendingFormRef.current = { ...addDueBillForm };
+    setPendingAddField(field);
+    setShowAddDueBill(false);
+    if (field === 'bill') openAddBillModal();
+    if (field === 'recurrence') openAddRecurrenceModal();
+    if (field === 'account') openAddAccountModal();
+    if (field === 'status') openAddStatusModal();
+  };
+
+  // After adding, re-open AddDueBillModal and pre-select new item
+  const handleAddedNewItem = () => {
+    // Refresh data first
+    refresh();
+    setTimeout(() => {
+      const newForm = pendingFormRef.current ? { ...pendingFormRef.current } : { ...addDueBillForm };
+      if (pendingAddField === 'bill' && bills.length > 0) {
+        const maxId = Math.max(...bills.map(b => b.id));
+        newForm.bill = maxId.toString();
+        // Optionally auto-fill recurrence/amount_due from new bill
+        const newBill = bills.find(b => b.id === maxId);
+        if (newBill) {
+          newForm.recurrence = newBill.recurrence ? newBill.recurrence.toString() : '';
+          newForm.amount_due = newBill.default_amount_due ? newBill.default_amount_due.toString() : '';
+        }
+      }
+      if (pendingAddField === 'recurrence' && recurrences.length > 0) {
+        const maxId = Math.max(...recurrences.map(r => r.id));
+        newForm.recurrence = maxId.toString();
+      }
+      if (pendingAddField === 'account' && accounts.length > 0) {
+        const maxId = Math.max(...accounts.map(a => a.id));
+        newForm.draft_account = maxId.toString();
+      }
+      if (pendingAddField === 'status' && statuses.length > 0) {
+        const maxId = Math.max(...statuses.map(s => s.id));
+        newForm.status = maxId.toString();
+      }
+      setAddDueBillForm(newForm);
+      setShowAddDueBill(true);
+      setPendingAddField(null);
+      pendingFormRef.current = null;
+    }, 200); // Wait for refresh
   };
 
   return (
@@ -258,10 +237,10 @@ const MainPage = ({ token }: MainPageProps) => {
           recurrences={recurrences}
           accounts={accounts}
           statuses={statuses}
-          onAddBill={() => setShowAddBillModal(true)}
-          onAddRecurrence={() => setShowAddRecurrenceModal(true)}
-          onAddAccount={() => setShowAddAccountModal(true)}
-          onAddStatus={() => setShowAddStatusModal(true)}
+          onAddBill={() => handleAddNewFromDueBill('bill')}
+          onAddRecurrence={() => handleAddNewFromDueBill('recurrence')}
+          onAddAccount={() => handleAddNewFromDueBill('account')}
+          onAddStatus={() => handleAddNewFromDueBill('status')}
         />
       )}
       {/* Add Bank Account Instance Modal */}
@@ -276,49 +255,61 @@ const MainPage = ({ token }: MainPageProps) => {
           loading={addBankInstanceLoading}
           accounts={accounts}
           statuses={statuses}
-          onAddAccount={() => setShowAddAccountModal(true)}
-          onAddStatus={() => setShowAddStatusModal(true)}
+          onAddAccount={openAddAccountModal}
+          onAddStatus={openAddStatusModal}
         />
       )}
       {showAddBillModal && (
         <AddBillModal
           show={showAddBillModal}
-          onClose={() => setShowAddBillModal(false)}
+          onClose={closeAddBillModal}
           token={token}
           accounts={accounts}
           categories={categories}
           recurrences={recurrences}
-          onAdded={refresh}
+          onAdded={() => {
+            closeAddBillModal();
+            handleAddedNewItem();
+          }}
         />
       )}
       {showAddAccountModal && (
         <AddBankAccountModal
           show={showAddAccountModal}
-          onClose={() => setShowAddAccountModal(false)}
+          onClose={closeAddAccountModal}
           token={token}
-          onAdded={refresh}
+          onAdded={() => {
+            closeAddAccountModal();
+            handleAddedNewItem();
+          }}
         />
       )}
       {showAddStatusModal && (
         <AddStatusModal
           show={showAddStatusModal}
-          onClose={() => setShowAddStatusModal(false)}
+          onClose={closeAddStatusModal}
           token={token}
-          onAdded={refresh}
+          onAdded={() => {
+            closeAddStatusModal();
+            handleAddedNewItem();
+          }}
         />
       )}
       {showAddRecurrenceModal && (
         <AddRecurrenceModal
           show={showAddRecurrenceModal}
-          onClose={() => setShowAddRecurrenceModal(false)}
+          onClose={closeAddRecurrenceModal}
           token={token}
-          onAdded={refresh}
+          onAdded={() => {
+            closeAddRecurrenceModal();
+            handleAddedNewItem();
+          }}
         />
       )}
       {showAddCategoryModal && (
         <AddCategoryModal
           show={showAddCategoryModal}
-          onClose={() => setShowAddCategoryModal(false)}
+          onClose={closeAddCategoryModal}
           token={token}
           onAdded={refresh}
         />
@@ -340,113 +331,24 @@ const MainPage = ({ token }: MainPageProps) => {
               </tr>
             </thead>
             <tbody>
-              {(() => {
-                // Globally sorted rows (already sorted above)
-                const renderedRows: React.ReactNode[] = [];
-                const subtotalInsertedForAccount: Record<number, boolean> = {};
-                // For each account, collect due bills for subtotaling
-                const dueBillsByAccount: Record<number, typeof dueBills> = {};
-                dueBills.forEach((db) => {
-                  const draftAccount: number | undefined = db.draft_account === null ? undefined : db.draft_account;
-                  if (typeof draftAccount === 'number') {
-                    if (!dueBillsByAccount[draftAccount]) dueBillsByAccount[draftAccount] = [];
-                    dueBillsByAccount[draftAccount].push(db);
-                  }
-                });
-                // For each account, collect bank instances for subtotaling
-                const bankInstancesByAccount: Record<number, typeof bankInstances> = {};
-                bankInstances.forEach((bi) => {
-                  const bankAccount: number | undefined = bi.bank_account === null ? undefined : bi.bank_account;
-                  if (typeof bankAccount === 'number') {
-                    if (!bankInstancesByAccount[bankAccount]) bankInstancesByAccount[bankAccount] = [];
-                    bankInstancesByAccount[bankAccount].push(bi);
-                  }
-                });
-                // Track which due bills have been rendered (for subtotaling)
-                const renderedDueBillIds = new Set<number>();
-                // Iterate through globally sorted rows
-                for (let i = 0; i < allRowsRaw.length; i++) {
-                  const r = allRowsRaw[i];
-                  const isBankInstance = r.type === 'BankAccountInstance';
-                  const isDueBill = r.type === 'DueBill';
-                  // Render the row
-                  renderedRows.push(
-                    <MainTableRow
-                      key={r.type + '-' + r.id}
-                      row={r}
-                      editingCell={editingCell}
-                      savingEdit={savingEdit}
-                      handleCellDoubleClick={handleCellDoubleClick}
-                      handleEditInputChange={handleEditInputChange}
-                      handleEditInputBlur={handleEditInputBlur}
-                      handleEditInputKeyDown={handleEditInputKeyDown}
-                      bills={bills}
-                      accounts={accounts}
-                      statuses={statuses}
-                      onDelete={handleDeleteRow}
-                      onAddBill={() => setShowAddBillModal(true)}
-                      onAddAccount={() => setShowAddAccountModal(true)}
-                      onAddStatus={() => setShowAddStatusModal(true)}
-                    />
-                  );
-                  // For due bills, mark as rendered
-                  if (isDueBill) {
-                    renderedDueBillIds.add(r.id);
-                  }
-                  // If this is a bank instance, insert subtotal after all due bills with pay_date >= this instance's pay_date and < next instance's pay_date
-                  if (isBankInstance) {
-                    const accountId: number | undefined = r.accountId === null ? undefined : r.accountId;
-                    if (typeof accountId === 'number') {
-                      const thisPayDate = r.pay_date || '';
-                      // Find next bank instance for this account
-                      const accountBankInstances = bankInstancesByAccount[accountId] || [];
-                      const thisIndex = accountBankInstances.findIndex((bi) => bi.id === r.id);
-                      const nextInstance = accountBankInstances[thisIndex + 1];
-                      const nextPayDate = nextInstance ? nextInstance.pay_date || '' : null;
-                      // Find due bills in this range
-                      const dueBillsInRange = (dueBillsByAccount[accountId] || []).filter((db) => {
-                        if (!db.pay_date) return false;
-                        if (db.pay_date < thisPayDate) return false;
-                        if (nextPayDate && db.pay_date >= nextPayDate) return false;
-                        return true;
-                      });
-                      const sumDue = dueBillsInRange.reduce((sum: number, db) => sum + parseFloat(db.amount_due), 0);
-                      const subtotal = parseFloat(r.balance) - sumDue;
-                      renderedRows.push(
-                        <SubtotalRow
-                          key={`subtotal-${accountId}-${r.id}`}
-                          rowKey={`subtotal-${accountId}-${r.id}`}
-                          subtotal={subtotal}
-                          accountName={accounts.find(a => a.id === accountId)?.name || 'Unknown'}
-                          fontColor={accounts.find(a => a.id === accountId)?.font_color}
-                        />
-                      );
-                    }
-                  }
-                  // If this is the last row for an account and there are due bills not covered by any bank instance, insert subtotal for those
-                  const nextRow = allRowsRaw[i + 1];
-                  const accountId: number | undefined = r.accountId === null ? undefined : r.accountId;
-                  const isLastForAccount = typeof accountId === 'number' && (!nextRow || nextRow.accountId !== accountId);
-                  if (isLastForAccount && typeof accountId === 'number' && !subtotalInsertedForAccount[accountId]) {
-                    // Find due bills for this account not covered by any bank instance
-                    const accountDueBills = (dueBillsByAccount[accountId] || []).filter((db) => db.pay_date && !renderedDueBillIds.has(db.id));
-                    if (accountDueBills.length > 0) {
-                      const sumDue = accountDueBills.reduce((sum: number, db) => sum + parseFloat(db.amount_due), 0);
-                      renderedRows.push(
-                        <SubtotalRow
-                          key={`subtotal-${accountId}-noinstance`}
-                          rowKey={`subtotal-${accountId}-noinstance`}
-                          subtotal={-sumDue}
-                          accountName={accounts.find(a => a.id === accountId)?.name || 'Unknown'}
-                          fontColor={accounts.find(a => a.id === accountId)?.font_color}
-                        />
-                      );
-                    }
-                    subtotalInsertedForAccount[accountId] = true;
-                  }
-                }
-                return renderedRows;
-              })()}
+              <MainTableBody
+                allRowsRaw={allRowsRaw}
+                dueBills={dueBills}
+                bankInstances={bankInstances}
+                accounts={accounts}
+                bills={bills}
+                statuses={statuses}
+                editingCell={editingCell}
+                savingEdit={savingEdit}
+                handleCellDoubleClick={handleCellDoubleClick}
+                handleEditInputChange={handleEditInputChange}
+                handleEditInputBlur={handleEditInputBlur}
+                handleEditInputKeyDown={handleEditInputKeyDown}
+                onDelete={handleDeleteRow}
+                onAddBill={openAddBillModal}
+                onAddAccount={openAddAccountModal}
+                onAddStatus={openAddStatusModal}
+              />
             </tbody>
           </table>
         </div>
