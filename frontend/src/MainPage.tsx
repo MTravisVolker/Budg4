@@ -72,6 +72,7 @@ function getAllRowsRaw(
       statusObj: statuses.find(s => s.id === row.status),
       accountObj: accounts.find(a => a.id === row.bank_account),
       accountId: row.bank_account,
+      priority: 0,
     })),
   ];
 
