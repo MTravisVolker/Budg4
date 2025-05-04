@@ -51,11 +51,15 @@ const MainPage = ({ token }: MainPageProps) => {
   const [showAddAccountModal, openAddAccountModal, closeAddAccountModal] = useModal();
   const [showAddStatusModal, openAddStatusModal, closeAddStatusModal] = useModal();
   const [showAddRecurrenceModal, openAddRecurrenceModal, closeAddRecurrenceModal] = useModal();
-  const [showAddCategoryModal, , closeAddCategoryModal] = useModal();
+  const [showAddCategoryModal, openAddCategoryModal, closeAddCategoryModal] = useModal();
 
   // Track which modal to open and which field to pre-select
   const [pendingAddField, setPendingAddField] = useState<null | 'bill' | 'recurrence' | 'account' | 'status'>(null);
   const pendingFormRef = useRef<typeof addDueBillForm | null>(null);
+
+  // Track which modal to open and which field to pre-select for AddBillModal
+  const [pendingAddBillField, setPendingAddBillField] = useState<null | 'account' | 'category' | 'recurrence'>(null);
+  const pendingBillFormRef = useRef<any>(null);
 
   // Inline cell editing logic (encapsulated in custom hook)
   const {
@@ -200,6 +204,40 @@ const MainPage = ({ token }: MainPageProps) => {
     }, 200); // Wait for refresh
   };
 
+  // Helper to open the correct modal and close AddBillModal
+  const handleAddNewFromBill = (field: 'account' | 'category' | 'recurrence') => {
+    pendingBillFormRef.current = null; // We'll set this after add
+    setPendingAddBillField(field);
+    closeAddBillModal();
+    if (field === 'account') openAddAccountModal();
+    if (field === 'category') openAddCategoryModal();
+    if (field === 'recurrence') openAddRecurrenceModal();
+  };
+
+  // After adding, re-open AddBillModal and pre-select new item
+  const handleAddedNewItemForBill = () => {
+    refresh();
+    setTimeout(() => {
+      let newForm = { name: '', default_amount_due: '', url: '', draft_account: '', category: '', recurrence: '', priority: '0' };
+      if (pendingBillFormRef.current) newForm = { ...pendingBillFormRef.current };
+      if (pendingAddBillField === 'account' && accounts.length > 0) {
+        const maxId = Math.max(...accounts.map(a => a.id));
+        newForm.draft_account = maxId.toString();
+      }
+      if (pendingAddBillField === 'category' && categories.length > 0) {
+        const maxId = Math.max(...categories.map(c => c.id));
+        newForm.category = maxId.toString();
+      }
+      if (pendingAddBillField === 'recurrence' && recurrences.length > 0) {
+        const maxId = Math.max(...recurrences.map(r => r.id));
+        newForm.recurrence = maxId.toString();
+      }
+      openAddBillModal();
+      setPendingAddBillField(null);
+      pendingBillFormRef.current = null;
+    }, 200);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -267,9 +305,24 @@ const MainPage = ({ token }: MainPageProps) => {
           accounts={accounts}
           categories={categories}
           recurrences={recurrences}
-          onAdded={() => {
+          onAdded={refresh}
+          onAddAccount={() => {
+            pendingBillFormRef.current = null;
+            setPendingAddBillField('account');
             closeAddBillModal();
-            handleAddedNewItem();
+            openAddAccountModal();
+          }}
+          onAddCategory={() => {
+            pendingBillFormRef.current = null;
+            setPendingAddBillField('category');
+            closeAddBillModal();
+            openAddCategoryModal();
+          }}
+          onAddRecurrence={() => {
+            pendingBillFormRef.current = null;
+            setPendingAddBillField('recurrence');
+            closeAddBillModal();
+            openAddRecurrenceModal();
           }}
         />
       )}
@@ -280,7 +333,7 @@ const MainPage = ({ token }: MainPageProps) => {
           token={token}
           onAdded={() => {
             closeAddAccountModal();
-            handleAddedNewItem();
+            handleAddedNewItemForBill();
           }}
         />
       )}
@@ -302,7 +355,7 @@ const MainPage = ({ token }: MainPageProps) => {
           token={token}
           onAdded={() => {
             closeAddRecurrenceModal();
-            handleAddedNewItem();
+            handleAddedNewItemForBill();
           }}
         />
       )}
@@ -311,7 +364,10 @@ const MainPage = ({ token }: MainPageProps) => {
           show={showAddCategoryModal}
           onClose={closeAddCategoryModal}
           token={token}
-          onAdded={refresh}
+          onAdded={() => {
+            closeAddCategoryModal();
+            handleAddedNewItemForBill();
+          }}
         />
       )}
       {loading && <div className="flex justify-center"><span className="loading loading-spinner loading-lg"></span></div>}
