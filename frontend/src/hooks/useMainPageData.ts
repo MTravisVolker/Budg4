@@ -35,8 +35,12 @@ export default function useMainPageData(token: string) {
         setCategories(categoriesRes.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch data');
+      .catch((error) => {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          setError('Your session has expired. Please log in again.');
+        } else {
+          setError('Failed to fetch data');
+        }
         setLoading(false);
       });
   }, [token]);
