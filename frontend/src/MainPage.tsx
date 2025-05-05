@@ -1,10 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import useMainPageData from './hooks/useMainPageData';
 import useEditableCell from './hooks/useEditableCell';
 import MainTableBody from './components/MainTableBody';
-import useAddDueBillModal from './hooks/useAddDueBillModal';
-import useAddBankInstanceModal from './hooks/useAddBankInstanceModal';
-import useModal from './hooks/useModal';
 import { editDueBill, editBankAccountInstance, deleteDueBill, deleteBankAccountInstance } from './api/dueBillApi';
 import { DueBill, BankAccountInstance, BankAccount, Bill, Status } from './types';
 import RenderAddDueBillModal from './components/RenderAddDueBillModal';
@@ -40,13 +37,6 @@ export type AddDueBillForm = {
   status: string;
   priority: string;
 };
-
-// Custom hook for modal + pending field + form ref
-function useModalWithPendingField<TField extends string, TForm>(initialPending: null | TField = null) {
-  const [pendingField, setPendingField] = useState<null | TField>(initialPending);
-  const formRef = useRef<TForm | null>(null);
-  return { pendingField, setPendingField, formRef };
-}
 
 // Utility function to prepare and sort all rows for the main table
 function getAllRowsRaw(
@@ -106,38 +96,40 @@ const MainPage = ({ token }: MainPageProps) => {
   } = useMainPageData(token);
 
   // Local state for add modals and forms
-  const {
-    showAddDueBill,
-    setShowAddDueBill,
-    addDueBillForm,
-    setAddDueBillForm,
-    addDueBillError,
-    addDueBillLoading,
-    handleAddDueBillChange,
-    handleAddDueBill,
-  } = useAddDueBillModal(token, bills, refresh);
-
-  const {
-    showAddBankInstance,
-    setShowAddBankInstance,
-    addBankInstanceForm,
-    addBankInstanceError,
-    addBankInstanceLoading,
-    handleAddBankInstanceChange,
-    handleAddBankInstance,
-  } = useAddBankInstanceModal(token, refresh);
-
+  const [addDueBillError, setAddDueBillError] = useState<string | null>(null);
+  const [addDueBillLoading, setAddDueBillLoading] = useState(false);
+  const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
+  const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
-  const [showAddBillModal, openAddBillModal, closeAddBillModal] = useModal();
-  const [showAddAccountModal, openAddAccountModal, closeAddAccountModal] = useModal();
-  const [showAddStatusModal, openAddStatusModal, closeAddStatusModal] = useModal();
-  const [showAddRecurrenceModal, openAddRecurrenceModal, closeAddRecurrenceModal] = useModal();
-  const [showAddCategoryModal, openAddCategoryModal, closeAddCategoryModal] = useModal();
+  const [showAddDueBillModal, setShowAddDueBillModal] = useState(false);
+  const [showAddBankInstanceModal, setShowAddBankInstanceModal] = useState(false);
+  const [showAddBillModal, setShowAddBillModal] = useState(false);
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [showAddStatusModal, setShowAddStatusModal] = useState(false);
+  const [showAddRecurrenceModal, setShowAddRecurrenceModal] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
 
-  // Replace old state for AddDueBillModal
-  const dueBillModalHelpers = useModalWithPendingField<'bill' | 'recurrence' | 'account' | 'status', AddDueBillForm>(null);
-  // Replace old state for AddBillModal
-  const billModalHelpers = useModalWithPendingField<'account' | 'category' | 'recurrence', AddBillForm>(null);
+  // Modal stack for navigation and restoration
+  const setModalStack: React.Dispatch<React.SetStateAction<Array<{ modal: string; form: unknown; pendingField: string | null }>>> = useState<Array<{ modal: string; form: unknown; pendingField: string | null }>>([])[1];
+
+  // Form states for each modal
+  const [addDueBillForm, setAddDueBillForm] = useState<AddDueBillForm>({
+    bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
+  });
+  type AddBankInstanceForm = {
+    bank_account: string;
+    balance: string;
+    due_date: string;
+    pay_date: string;
+    status: string;
+    priority: string;
+  };
+  const [addBankInstanceForm, setAddBankInstanceForm] = useState<AddBankInstanceForm>({
+    bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0',
+  });
+  const [addBillForm, setAddBillForm] = useState<AddBillForm>({
+    name: '', default_amount_due: '', url: '', draft_account: '', category: '', recurrence: '', priority: '0',
+  });
 
   // Inline cell editing logic (encapsulated in custom hook)
   const {
@@ -199,74 +191,169 @@ const MainPage = ({ token }: MainPageProps) => {
     }
   };
 
-  // Helper to open the correct modal and close AddDueBillModal
-  const handleAddNewFromDueBill = (field: 'bill' | 'recurrence' | 'account' | 'status') => {
-    dueBillModalHelpers.formRef.current = { ...addDueBillForm };
-    dueBillModalHelpers.setPendingField(field);
-    setShowAddDueBill(false);
-    if (field === 'bill') openAddBillModal();
-    if (field === 'recurrence') openAddRecurrenceModal();
-    if (field === 'account') openAddAccountModal();
-    if (field === 'status') openAddStatusModal();
+  // Helper to open a modal and push to stack
+  const openModal = (modal: string, form: unknown, pendingField: string | null = null) => {
+    setModalStack(stack => [...stack, { modal, form, pendingField }]);
+    if (modal === 'AddDueBill') setShowAddDueBillModal(true);
+    if (modal === 'AddBill') setShowAddBillModal(true);
+    if (modal === 'AddBankAccount') setShowAddAccountModal(true);
+    if (modal === 'AddStatus') setShowAddStatusModal(true);
+    if (modal === 'AddRecurrence') setShowAddRecurrenceModal(true);
+    if (modal === 'AddCategory') setShowAddCategoryModal(true);
+    if (modal === 'AddBankInstance') setShowAddBankInstanceModal(true);
   };
 
-  // After adding, re-open AddDueBillModal and pre-select new item
-  const handleAddedNewItem = () => {
-    // Refresh data first
+  // Helper to close a modal and pop from stack
+  const closeModal = (modal: string) => {
+    setModalStack(stack => stack.slice(0, -1));
+    if (modal === 'AddDueBill') setShowAddDueBillModal(false);
+    if (modal === 'AddBill') setShowAddBillModal(false);
+    if (modal === 'AddBankAccount') setShowAddAccountModal(false);
+    if (modal === 'AddStatus') setShowAddStatusModal(false);
+    if (modal === 'AddRecurrence') setShowAddRecurrenceModal(false);
+    if (modal === 'AddCategory') setShowAddCategoryModal(false);
+    if (modal === 'AddBankInstance') setShowAddBankInstanceModal(false);
+  };
+
+  // Handler to open "add new" from any modal
+  const handleAddNewFromModal = (fromModal: string, field: string, form: unknown) => {
+    // Save current form and pending field
+    openModal(fromModal, form, field);
+    // Open the new modal
+    if (field === 'bill') openModal('AddBill', {});
+    if (field === 'recurrence') openModal('AddRecurrence', {});
+    if (field === 'account') openModal('AddBankAccount', {});
+    if (field === 'status') openModal('AddStatus', {});
+    if (field === 'category') openModal('AddCategory', {});
+  };
+
+  // Handler after adding a new item
+  const handleAddedNewItem = (newItemType: string, newItemId: number) => {
     refresh();
     setTimeout(() => {
-      const newForm = dueBillModalHelpers.formRef.current ? { ...dueBillModalHelpers.formRef.current } : { ...addDueBillForm };
-      if (dueBillModalHelpers.pendingField === 'bill' && bills.length > 0) {
-        const maxId = Math.max(...bills.map(b => b.id));
-        newForm.bill = maxId.toString();
-        // Optionally auto-fill recurrence/amount_due from new bill
-        const newBill = bills.find(b => b.id === maxId);
-        if (newBill) {
-          newForm.recurrence = newBill.recurrence ? newBill.recurrence.toString() : '';
-          newForm.amount_due = newBill.default_amount_due ? newBill.default_amount_due.toString() : '';
+      setModalStack(stack => {
+        const newStack = stack.slice(0, -1);
+        if (newStack.length === 0) return newStack;
+        const prev = newStack[newStack.length - 1];
+        // Restore previous modal and form state
+        if (prev.modal === 'AddDueBill') {
+          const newForm = { ...addDueBillForm };
+          if (prev.pendingField === 'bill' && newItemType === 'bill') newForm.bill = newItemId.toString();
+          if (prev.pendingField === 'recurrence' && newItemType === 'recurrence') newForm.recurrence = newItemId.toString();
+          if (prev.pendingField === 'account' && newItemType === 'account') newForm.draft_account = newItemId.toString();
+          if (prev.pendingField === 'status' && newItemType === 'status') newForm.status = newItemId.toString();
+          setAddDueBillForm(newForm);
+          setShowAddDueBillModal(true);
+        } else if (prev.modal === 'AddBill') {
+          const newForm = { ...addBillForm };
+          if (prev.pendingField === 'account' && newItemType === 'account') newForm.draft_account = newItemId.toString();
+          if (prev.pendingField === 'category' && newItemType === 'category') newForm.category = newItemId.toString();
+          if (prev.pendingField === 'recurrence' && newItemType === 'recurrence') newForm.recurrence = newItemId.toString();
+          setAddBillForm(newForm);
+          setShowAddBillModal(true);
         }
-      }
-      if (dueBillModalHelpers.pendingField === 'recurrence' && recurrences.length > 0) {
-        const maxId = Math.max(...recurrences.map(r => r.id));
-        newForm.recurrence = maxId.toString();
-      }
-      if (dueBillModalHelpers.pendingField === 'account' && accounts.length > 0) {
-        const maxId = Math.max(...accounts.map(a => a.id));
-        newForm.draft_account = maxId.toString();
-      }
-      if (dueBillModalHelpers.pendingField === 'status' && statuses.length > 0) {
-        const maxId = Math.max(...statuses.map(s => s.id));
-        newForm.status = maxId.toString();
-      }
-      setAddDueBillForm(newForm);
-      setShowAddDueBill(true);
-      dueBillModalHelpers.setPendingField(null);
-      dueBillModalHelpers.formRef.current = null;
-    }, 200); // Wait for refresh
+        // Add similar logic for other modals if needed
+        return newStack;
+      });
+    }, 200);
   };
 
-  // After adding, re-open AddDueBillModal and pre-select new item
-  const handleAddedNewItemForBill = () => {
-    refresh();
-    setTimeout(() => {
-      let newForm = { name: '', default_amount_due: '', url: '', draft_account: '', category: '', recurrence: '', priority: '0' };
-      if (billModalHelpers.formRef.current) newForm = { ...billModalHelpers.formRef.current };
-      if (billModalHelpers.pendingField === 'account' && accounts.length > 0) {
-        const maxId = Math.max(...accounts.map(a => a.id));
-        newForm.draft_account = maxId.toString();
-      }
-      if (billModalHelpers.pendingField === 'category' && categories.length > 0) {
-        const maxId = Math.max(...categories.map(c => c.id));
-        newForm.category = maxId.toString();
-      }
-      if (billModalHelpers.pendingField === 'recurrence' && recurrences.length > 0) {
-        const maxId = Math.max(...recurrences.map(r => r.id));
-        newForm.recurrence = maxId.toString();
-      }
-      openAddBillModal();
-      billModalHelpers.setPendingField(null);
-      billModalHelpers.formRef.current = null;
-    }, 200);
+  // AddDueBill handlers
+  const handleAddDueBillChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === 'bill') {
+      const selectedBill = bills.find(b => b.id === parseInt(value));
+      setAddDueBillForm(form => ({
+        ...form,
+        bill: value,
+        recurrence: selectedBill?.recurrence ? selectedBill.recurrence.toString() : '',
+        amount_due: selectedBill?.default_amount_due ? selectedBill.default_amount_due.toString() : '',
+      }));
+    } else {
+      setAddDueBillForm(form => ({ ...form, [name]: value }));
+    }
+  };
+
+  const handleAddDueBill = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddDueBillError(null);
+    setAddDueBillLoading(true);
+    if (!addDueBillForm.bill || !addDueBillForm.amount_due || !addDueBillForm.due_date) {
+      setAddDueBillError('Bill, Amount Due, and Due Date are required');
+      setAddDueBillLoading(false);
+      return;
+    }
+    const priorityValue = addDueBillForm.priority ? parseInt(addDueBillForm.priority) : 0;
+    if (priorityValue < 1) {
+      setAddDueBillError('Priority must be at least 1');
+      setAddDueBillLoading(false);
+      return;
+    }
+    import('./api/dueBillApi').then(({ addDueBill }) => {
+      addDueBill({
+        bill: parseInt(addDueBillForm.bill),
+        recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
+        amount_due: parseFloat(addDueBillForm.amount_due),
+        draft_account: addDueBillForm.draft_account ? parseInt(addDueBillForm.draft_account) : null,
+        due_date: addDueBillForm.due_date,
+        pay_date: addDueBillForm.pay_date || null,
+        status: addDueBillForm.status ? parseInt(addDueBillForm.status) : null,
+        priority: priorityValue,
+      }, token)
+        .then(() => {
+          setShowAddDueBillModal(false);
+          setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
+          setAddDueBillLoading(false);
+          refresh();
+        })
+        .catch(() => {
+          setAddDueBillError('Failed to add due bill');
+          setAddDueBillLoading(false);
+        });
+    });
+  };
+
+  // AddBankInstance handlers
+  const handleAddBankInstanceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (e.target.name === 'due_date') {
+      setAddBankInstanceForm(form => ({ ...form, due_date: e.target.value, pay_date: e.target.value }));
+    } else {
+      setAddBankInstanceForm(form => ({ ...form, [e.target.name]: e.target.value }));
+    }
+  };
+
+  const handleAddBankInstance = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddBankInstanceError(null);
+    setAddBankInstanceLoading(true);
+    if (!addBankInstanceForm.bank_account || !addBankInstanceForm.balance || !addBankInstanceForm.due_date) {
+      setAddBankInstanceError('Bank Account, Balance, and Due Date are required');
+      setAddBankInstanceLoading(false);
+      return;
+    }
+    import('./api/dueBillApi').then(({ addBankAccountInstance }) => {
+      addBankAccountInstance({
+        bank_account: parseInt(addBankInstanceForm.bank_account),
+        balance: parseFloat(addBankInstanceForm.balance),
+        due_date: addBankInstanceForm.due_date,
+        pay_date: addBankInstanceForm.pay_date || null,
+        status: addBankInstanceForm.status ? parseInt(addBankInstanceForm.status) : null,
+        priority: (() => {
+          const val = parseInt(addBankInstanceForm.priority, 10);
+          return isNaN(val) ? 0 : val;
+        })(),
+      }, token)
+        .then(() => {
+          setShowAddBankInstanceModal(false);
+          setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0' });
+          setAddBankInstanceLoading(false);
+          refresh();
+        })
+        .catch(() => {
+          setAddBankInstanceError('Failed to add bank account instance');
+          setAddBankInstanceLoading(false);
+        });
+    });
   };
 
   return (
@@ -274,8 +361,8 @@ const MainPage = ({ token }: MainPageProps) => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Main Table</h1>
         <div className="flex gap-2 items-center">
-          <button className="btn btn-primary" onClick={() => setShowAddDueBill(true)}>Add Due Bill</button>
-          <button className="btn btn-secondary" onClick={() => setShowAddBankInstance(true)}>Add Bank Account Instance</button>
+          <button className="btn btn-primary" onClick={() => setShowAddDueBillModal(true)}>Add Due Bill</button>
+          <button className="btn btn-secondary" onClick={() => setShowAddBankInstanceModal(true)}>Add Bank Account Instance</button>
           <input
             type="date"
             value={dateRange.start}
@@ -294,8 +381,8 @@ const MainPage = ({ token }: MainPageProps) => {
       </div>
       {/* Modals */}
       <RenderAddDueBillModal
-        show={showAddDueBill}
-        onClose={() => setShowAddDueBill(false)}
+        show={showAddDueBillModal}
+        onClose={() => closeModal('AddDueBill')}
         onSubmit={handleAddDueBill}
         onChange={handleAddDueBillChange}
         form={addDueBillForm}
@@ -305,14 +392,14 @@ const MainPage = ({ token }: MainPageProps) => {
         recurrences={recurrences}
         accounts={accounts}
         statuses={statuses}
-        onAddBill={() => handleAddNewFromDueBill('bill')}
-        onAddRecurrence={() => handleAddNewFromDueBill('recurrence')}
-        onAddAccount={() => handleAddNewFromDueBill('account')}
-        onAddStatus={() => handleAddNewFromDueBill('status')}
+        onAddBill={() => handleAddNewFromModal('AddDueBill', 'bill', addDueBillForm)}
+        onAddRecurrence={() => handleAddNewFromModal('AddDueBill', 'recurrence', addDueBillForm)}
+        onAddAccount={() => handleAddNewFromModal('AddDueBill', 'account', addDueBillForm)}
+        onAddStatus={() => handleAddNewFromModal('AddDueBill', 'status', addDueBillForm)}
       />
       <RenderAddBankInstanceModal
-        show={showAddBankInstance}
-        onClose={() => setShowAddBankInstance(false)}
+        show={showAddBankInstanceModal}
+        onClose={() => closeModal('AddBankInstance')}
         onSubmit={handleAddBankInstance}
         onChange={handleAddBankInstanceChange}
         form={addBankInstanceForm}
@@ -320,71 +407,44 @@ const MainPage = ({ token }: MainPageProps) => {
         loading={addBankInstanceLoading}
         accounts={accounts}
         statuses={statuses}
-        onAddAccount={openAddAccountModal}
-        onAddStatus={openAddStatusModal}
+        onAddAccount={() => handleAddNewFromModal('AddBankInstance', 'account', addBankInstanceForm)}
+        onAddStatus={() => handleAddNewFromModal('AddBankInstance', 'status', addBankInstanceForm)}
       />
       <RenderAddBillModal
         show={showAddBillModal}
-        onClose={closeAddBillModal}
+        onClose={() => closeModal('AddBill')}
         token={token}
         accounts={accounts}
         categories={categories}
         recurrences={recurrences}
-        onAdded={refresh}
-        onAddAccount={() => {
-          billModalHelpers.formRef.current = null;
-          billModalHelpers.setPendingField('account');
-          closeAddBillModal();
-          openAddAccountModal();
-        }}
-        onAddCategory={() => {
-          billModalHelpers.formRef.current = null;
-          billModalHelpers.setPendingField('category');
-          closeAddBillModal();
-          openAddCategoryModal();
-        }}
-        onAddRecurrence={() => {
-          billModalHelpers.formRef.current = null;
-          billModalHelpers.setPendingField('recurrence');
-          closeAddBillModal();
-          openAddRecurrenceModal();
-        }}
+        onAdded={() => handleAddedNewItem('bill', bills.length > 0 ? Math.max(...bills.map(b => b.id)) : 0)}
+        onAddAccount={() => handleAddNewFromModal('AddBill', 'account', addBillForm)}
+        onAddCategory={() => handleAddNewFromModal('AddBill', 'category', addBillForm)}
+        onAddRecurrence={() => handleAddNewFromModal('AddBill', 'recurrence', addBillForm)}
       />
       <RenderAddBankAccountModal
         show={showAddAccountModal}
-        onClose={closeAddAccountModal}
+        onClose={() => closeModal('AddBankAccount')}
         token={token}
-        onAdded={() => {
-          closeAddAccountModal();
-          handleAddedNewItemForBill();
-        }}
+        onAdded={() => handleAddedNewItem('account', accounts.length > 0 ? Math.max(...accounts.map(a => a.id)) : 0)}
       />
       <RenderAddStatusModal
         show={showAddStatusModal}
-        onClose={closeAddStatusModal}
+        onClose={() => closeModal('AddStatus')}
         token={token}
-        onAdded={() => {
-          closeAddStatusModal();
-          handleAddedNewItem();
-        }}
+        onAdded={() => handleAddedNewItem('status', statuses.length > 0 ? Math.max(...statuses.map(s => s.id)) : 0)}
       />
       <RenderAddRecurrenceModal
         show={showAddRecurrenceModal}
-        onClose={closeAddRecurrenceModal}
+        onClose={() => closeModal('AddRecurrence')}
         token={token}
-        onAdded={() => {
-          closeAddRecurrenceModal();
-          handleAddedNewItemForBill();
-        }}
+        onAdded={() => handleAddedNewItem('recurrence', recurrences.length > 0 ? Math.max(...recurrences.map(r => r.id)) : 0)}
       />
       <RenderAddCategoryModal
         show={showAddCategoryModal}
-        onClose={closeAddCategoryModal}
+        onClose={() => closeModal('AddCategory')}
         token={token}
-        onAdded={() => {
-          closeAddCategoryModal();
-          handleAddedNewItemForBill();
-        }}
+        onAdded={() => handleAddedNewItem('category', categories.length > 0 ? Math.max(...categories.map(c => c.id)) : 0)}
       />
       {/* End Modals */}
       {loading && <div className="flex justify-center"><span className="loading loading-spinner loading-lg"></span></div>}
@@ -419,9 +479,6 @@ const MainPage = ({ token }: MainPageProps) => {
                 handleEditInputBlur={handleEditInputBlur}
                 handleEditInputKeyDown={handleEditInputKeyDown}
                 onDelete={handleDeleteRow}
-                onAddBill={openAddBillModal}
-                onAddAccount={openAddAccountModal}
-                onAddStatus={openAddStatusModal}
               />
             </tbody>
           </table>
