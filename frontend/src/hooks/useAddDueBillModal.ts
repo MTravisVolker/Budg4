@@ -33,6 +33,12 @@ export default function useAddDueBillModal(token: string, bills: any[], refresh:
       setAddDueBillLoading(false);
       return;
     }
+    const priorityValue = addDueBillForm.priority ? parseInt(addDueBillForm.priority) : 0;
+    if (priorityValue < 1) {
+      setAddDueBillError('Priority must be at least 1');
+      setAddDueBillLoading(false);
+      return;
+    }
     addDueBill({
       bill: parseInt(addDueBillForm.bill),
       recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
@@ -41,7 +47,7 @@ export default function useAddDueBillModal(token: string, bills: any[], refresh:
       due_date: addDueBillForm.due_date,
       pay_date: addDueBillForm.pay_date || null,
       status: addDueBillForm.status ? parseInt(addDueBillForm.status) : null,
-      priority: addDueBillForm.priority ? parseInt(addDueBillForm.priority) : 0,
+      priority: priorityValue,
     }, token)
       .then(() => {
         setShowAddDueBill(false);
