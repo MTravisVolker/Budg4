@@ -142,11 +142,13 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
       });
       // Subtotal for this group
       const sumDue = dueBillsInRange.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
+      const instanceBalance = parseFloat(instance.balance);
+      const subtotal = instanceBalance - sumDue;
       groupRows.push(
         <SubtotalRow
           key={`subtotal-${accountId}-${instance.id}`}
           rowKey={`subtotal-${accountId}-${instance.id}`}
-          subtotal={sumDue}
+          subtotal={subtotal}
           accountName={account.name}
           fontColor={account.font_color}
         />
@@ -191,11 +193,12 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
         );
       });
       const sumDue = catchAllDueBills.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
+      const subtotal = 0 - sumDue;
       groupRows.push(
         <SubtotalRow
           key={`subtotal-${accountId}-catchall`}
           rowKey={`subtotal-${accountId}-catchall`}
-          subtotal={sumDue}
+          subtotal={subtotal}
           accountName={account.name}
           fontColor={account.font_color}
         />
