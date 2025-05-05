@@ -99,11 +99,23 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
         />
       );
       // Find due bills in this range
-      const dueBillsInRange = accountDueBills.filter(db => {
+      let dueBillsInRange = accountDueBills.filter(db => {
         if (!db.pay_date) return false;
         if (db.pay_date < start) return false;
         if (end && db.pay_date >= end) return false;
         return true;
+      });
+      // Sort by pay_date, then priority, then due_date
+      dueBillsInRange = dueBillsInRange.slice().sort((a, b) => {
+        const aPay = a.pay_date || '';
+        const bPay = b.pay_date || '';
+        if (aPay !== bPay) return aPay.localeCompare(bPay);
+        const aPriority = a.priority ?? 0;
+        const bPriority = b.priority ?? 0;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        const aDue = a.due_date || '';
+        const bDue = b.due_date || '';
+        return aDue.localeCompare(bDue);
       });
       // Render due bills
       dueBillsInRange.forEach(db => {
@@ -142,7 +154,19 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
       allGroups.push({ payDate: start, rows: groupRows });
     }
     // Catch-all group: due bills not in any instance's range
-    const catchAllDueBills = accountDueBills.filter(db => !usedDueBillIds.has(db.id));
+    let catchAllDueBills = accountDueBills.filter(db => !usedDueBillIds.has(db.id));
+    // Sort by pay_date, then priority, then due_date
+    catchAllDueBills = catchAllDueBills.slice().sort((a, b) => {
+      const aPay = a.pay_date || '';
+      const bPay = b.pay_date || '';
+      if (aPay !== bPay) return aPay.localeCompare(bPay);
+      const aPriority = a.priority ?? 0;
+      const bPriority = b.priority ?? 0;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      const aDue = a.due_date || '';
+      const bDue = b.due_date || '';
+      return aDue.localeCompare(bDue);
+    });
     if (catchAllDueBills.length > 0) {
       const groupRows: React.ReactNode[] = [];
       catchAllDueBills.forEach(db => {
