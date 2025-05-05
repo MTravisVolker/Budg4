@@ -71,6 +71,10 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
     const accountDueBills = (dueBillsByAccount[accountId] || []).slice().sort((a, b) => (a.pay_date || '').localeCompare(b.pay_date || ''));
     const usedDueBillIds = new Set<number>();
 
+    // Find the status id for 'cleared'
+    const clearedStatus = statuses.find(s => s.name.toLowerCase() === 'cleared');
+    const clearedStatusId = clearedStatus ? clearedStatus.id : null;
+
     // For each account instance, find due bills in its date range
     for (let i = 0; i < accountInstances.length; i++) {
       const instance = accountInstances[i];
@@ -117,7 +121,7 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
         const bDue = b.due_date || '';
         return aDue.localeCompare(bDue);
       });
-      // Render due bills
+      // Render due bills (do not filter out cleared)
       dueBillsInRange.forEach(db => {
         groupRows.push(
           <MainTableRow
@@ -140,8 +144,11 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
         );
         usedDueBillIds.add(db.id);
       });
-      // Subtotal for this group
-      const sumDue = dueBillsInRange.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
+      // Subtotal for this group (exclude cleared)
+      const sumDue = dueBillsInRange.reduce((sum, db) => {
+        if (clearedStatusId !== null && db.status === clearedStatusId) return sum;
+        return sum + parseFloat(db.amount_due);
+      }, 0);
       const instanceBalance = parseFloat(instance.balance);
       const subtotal = instanceBalance - sumDue;
       groupRows.push(
@@ -192,7 +199,11 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
           />
         );
       });
-      const sumDue = catchAllDueBills.reduce((sum, db) => sum + parseFloat(db.amount_due), 0);
+      // Subtotal for catch-all (exclude cleared)
+      const sumDue = catchAllDueBills.reduce((sum, db) => {
+        if (clearedStatusId !== null && db.status === clearedStatusId) return sum;
+        return sum + parseFloat(db.amount_due);
+      }, 0);
       const subtotal = 0 - sumDue;
       groupRows.push(
         <SubtotalRow
