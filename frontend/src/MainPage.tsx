@@ -307,6 +307,7 @@ const MainPage = ({ token }: MainPageProps) => {
         recurrence: selectedBill?.recurrence ? selectedBill.recurrence.toString() : '',
         amount_due: selectedBill?.default_amount_due ? selectedBill.default_amount_due.toString() : '',
         draft_account: selectedBill?.draft_account ? selectedBill.draft_account.toString() : '',
+        priority: selectedBill?.priority ? selectedBill.priority.toString() : '0',
       }));
     } else {
       setAddDueBillForm(form => ({ ...form, [name]: value }));
