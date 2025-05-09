@@ -37,7 +37,19 @@ export default function useMainPageData(token: string) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  
+  // Load initial date range from localStorage or use empty object
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>(() => {
+    const savedDateRange = localStorage.getItem('dateRange');
+    return savedDateRange ? JSON.parse(savedDateRange) : { start: '', end: '' };
+  });
+
+  // Save date range to localStorage whenever it changes
+  useEffect(() => {
+    if (dateRange.start && dateRange.end) {
+      localStorage.setItem('dateRange', JSON.stringify(dateRange));
+    }
+  }, [dateRange]);
 
   const fetchAll = useCallback(() => {
     if (!token) return;
@@ -86,7 +98,9 @@ export default function useMainPageData(token: string) {
   }, [fetchAll]);
 
   const clearDateRange = useCallback(() => {
-    setDateRange(calculateDefaultDateRange(bankInstances));
+    const newDateRange = calculateDefaultDateRange(bankInstances);
+    setDateRange(newDateRange);
+    localStorage.removeItem('dateRange'); // Clear saved date range when resetting
   }, [bankInstances]);
 
   return {
