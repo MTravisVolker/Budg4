@@ -31,6 +31,7 @@ export type AddDueBillForm = {
   bill: string;
   recurrence: string;
   amount_due: string;
+  total_balance: string;
   draft_account: string;
   due_date: string;
   pay_date: string;
@@ -114,7 +115,7 @@ const MainPage = ({ token }: MainPageProps) => {
 
   // Form states for each modal
   const [addDueBillForm, setAddDueBillForm] = useState<AddDueBillForm>({
-    bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
+    bill: '', recurrence: '', amount_due: '', total_balance: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
   });
   type AddBankInstanceForm = {
     bank_account: string;
@@ -294,6 +295,7 @@ const MainPage = ({ token }: MainPageProps) => {
         bill: parseInt(addDueBillForm.bill),
         recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
         amount_due: parseFloat(addDueBillForm.amount_due),
+        total_balance: parseFloat(addDueBillForm.total_balance),
         draft_account: addDueBillForm.draft_account ? parseInt(addDueBillForm.draft_account) : null,
         due_date: addDueBillForm.due_date,
         pay_date: addDueBillForm.pay_date || null,
@@ -302,7 +304,7 @@ const MainPage = ({ token }: MainPageProps) => {
       }, token)
         .then(() => {
           setShowAddDueBillModal(false);
-          setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
+          setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', total_balance: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
           setAddDueBillLoading(false);
           refresh();
         })
@@ -462,6 +464,7 @@ const MainPage = ({ token }: MainPageProps) => {
                 <th>Account</th>
                 <th>Priority</th>
                 <th>Payment</th>
+                <th>Total Balance</th>
               </tr>
             </thead>
             <tbody>

@@ -18,6 +18,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
   const [form, setForm] = useState({
     name: '',
     default_amount_due: '',
+    total_balance: '',
     url: '',
     draft_account: '',
     category: '',
@@ -44,6 +45,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
     axios.post('/api/bills/', {
       ...form,
       default_amount_due: parseFloat(form.default_amount_due),
+      total_balance: parseFloat(form.total_balance),
       draft_account: form.draft_account ? parseInt(form.draft_account) : null,
       category: form.category ? parseInt(form.category) : null,
       recurrence: form.recurrence ? parseInt(form.recurrence) : null,
@@ -55,6 +57,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
         setForm({
           name: '',
           default_amount_due: '',
+          total_balance: '',
           url: '',
           draft_account: '',
           category: '',
@@ -93,6 +96,12 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               <span className="label-text">Amount Due</span>
             </label>
             <input name="default_amount_due" value={form.default_amount_due} onChange={handleFormChange} required type="number" step="0.01" className="input input-bordered" />
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Total Balance</span>
+            </label>
+            <input name="total_balance" value={form.total_balance} onChange={handleFormChange} required type="number" step="0.01" className="input input-bordered" />
           </div>
           <div className="form-control">
             <label className="label">
