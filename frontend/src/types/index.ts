@@ -3,6 +3,7 @@ export interface DueBill {
   bill: number; // Bill id
   recurrence: number | null;
   amount_due: string;
+  total_balance: string;
   draft_account: number | null;
   due_date: string;
   pay_date: string | null;
@@ -14,6 +15,7 @@ export interface BankAccountInstance {
   id: number;
   bank_account: number;
   balance: string;
+  total_balance: string;
   due_date: string;
   pay_date: string | null;
   status: number | null;

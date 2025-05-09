@@ -8,6 +8,7 @@ interface AddDueBillModalProps {
     bill: string;
     recurrence: string;
     amount_due: string;
+    total_balance: string;
     draft_account: string;
     due_date: string;
     pay_date: string;
@@ -92,6 +93,10 @@ const AddDueBillModal: React.FC<AddDueBillModalProps> = ({
           <div className="form-control">
             <label className="label"><span className="label-text">Amount Due</span></label>
             <input name="amount_due" value={form.amount_due} onChange={onChange} required type="number" step="0.01" className="input input-bordered" />
+          </div>
+          <div className="form-control">
+            <label className="label"><span className="label-text">Total Balance</span></label>
+            <input name="total_balance" value={form.total_balance} onChange={onChange} required type="number" step="0.01" className="input input-bordered" />
           </div>
           <div className="form-control">
             <label className="label"><span className="label-text">Draft Account</span>

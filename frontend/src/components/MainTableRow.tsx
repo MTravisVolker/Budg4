@@ -230,6 +230,29 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
         formatCurrency(row.type === 'DueBill' ? row.amount_due : row.balance)
       )}
     </td>
+    {/* Total Balance */}
+    <td
+      style={{
+        ...(row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}),
+        textAlign: 'right',
+      }}
+      onDoubleClick={() => handleCellDoubleClick(row, row.type, 'total_balance', row.total_balance)}
+    >
+      {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'total_balance' ? (
+        <input
+          type="number"
+          value={editingCell.value}
+          onChange={handleEditInputChange}
+          onBlur={handleEditInputBlur}
+          onKeyDown={handleEditInputKeyDown}
+          autoFocus
+          className="input input-bordered"
+          disabled={savingEdit}
+        />
+      ) : (
+        formatCurrency(row.total_balance)
+      )}
+    </td>
     {/* Delete Button */}
     <td>
       <button className="btn btn-error btn-xs" onClick={() => onDelete(row.type, row.id)}>
