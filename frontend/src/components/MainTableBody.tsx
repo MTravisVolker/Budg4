@@ -16,7 +16,7 @@ interface MainTableBodyProps {
     value: string | number;
   } | null;
   savingEdit: boolean;
-  handleCellDoubleClick: (row: unknown, type: 'DueBill' | 'BankAccountInstance', field: string, value: string | number) => void;
+  handleCellDoubleClick: (row: { id: number; type: 'DueBill' | 'BankAccountInstance'; }, type: 'DueBill' | 'BankAccountInstance', field: string, value: string | number) => void;
   handleEditInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   handleEditInputBlur: () => void;
   handleEditInputKeyDown: (e: React.KeyboardEvent) => void;
