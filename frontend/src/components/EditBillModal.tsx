@@ -16,6 +16,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
   const [form, setForm] = useState({
     name: '',
     default_amount_due: '',
+    total_balance: '',
     url: '',
     draft_account: '',
     category: '',
@@ -30,6 +31,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
       setForm({
         name: bill.name || '',
         default_amount_due: bill.default_amount_due?.toString() || '',
+        total_balance: bill.total_balance?.toString() || '',
         url: bill.url || '',
         draft_account: bill.draft_account?.toString() || '',
         category: bill.category?.toString() || '',
@@ -48,14 +50,15 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
     e.preventDefault();
     setFormError(null);
     setFormLoading(true);
-    if (!form.name || !form.default_amount_due) {
-      setFormError('Name and Amount Due are required');
+    if (!form.name || !form.default_amount_due || !form.total_balance) {
+      setFormError('Name, Amount Due, and Total Balance are required');
       setFormLoading(false);
       return;
     }
     axios.put(`/api/bills/${bill.id}/`, {
       ...form,
       default_amount_due: parseFloat(form.default_amount_due),
+      total_balance: parseFloat(form.total_balance),
       draft_account: form.draft_account ? parseInt(form.draft_account) : null,
       category: form.category ? parseInt(form.category) : null,
       recurrence: form.recurrence ? parseInt(form.recurrence) : null,
@@ -96,6 +99,12 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
               <span className="label-text">Amount Due</span>
             </label>
             <input name="default_amount_due" value={form.default_amount_due} onChange={handleFormChange} required type="number" step="0.01" className="input input-bordered" />
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Total Balance</span>
+            </label>
+            <input name="total_balance" value={form.total_balance} onChange={handleFormChange} required type="number" step="0.01" className="input input-bordered" />
           </div>
           <div className="form-control">
             <label className="label">

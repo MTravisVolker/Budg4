@@ -269,13 +269,14 @@ const MainPage = ({ token }: MainPageProps) => {
         bill: value,
         recurrence: selectedBill?.recurrence ? selectedBill.recurrence.toString() : '',
         amount_due: selectedBill?.default_amount_due ? selectedBill.default_amount_due.toString() : '',
+        draft_account: selectedBill?.draft_account ? selectedBill.draft_account.toString() : '',
       }));
     } else {
       setAddDueBillForm(form => ({ ...form, [name]: value }));
     }
   };
 
-  const handleAddDueBill = (e: React.FormEvent) => {
+  const handleAddDueBill = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddDueBillError(null);
     setAddDueBillLoading(true);
@@ -290,8 +291,9 @@ const MainPage = ({ token }: MainPageProps) => {
       setAddDueBillLoading(false);
       return;
     }
-    import('./api/dueBillApi').then(({ addDueBill }) => {
-      addDueBill({
+    try {
+      const { addDueBill } = await import('./api/dueBillApi');
+      await addDueBill({
         bill: parseInt(addDueBillForm.bill),
         recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
         amount_due: parseFloat(addDueBillForm.amount_due),
@@ -301,18 +303,16 @@ const MainPage = ({ token }: MainPageProps) => {
         pay_date: addDueBillForm.pay_date || null,
         status: addDueBillForm.status ? parseInt(addDueBillForm.status) : null,
         priority: priorityValue,
-      }, token)
-        .then(() => {
-          setShowAddDueBillModal(false);
-          setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', total_balance: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
-          setAddDueBillLoading(false);
-          refresh();
-        })
-        .catch(() => {
-          setAddDueBillError('Failed to add due bill');
-          setAddDueBillLoading(false);
-        });
-    });
+      }, token);
+      
+      setShowAddDueBillModal(false);
+      setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', total_balance: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
+      await refresh();
+    } catch (error) {
+      setAddDueBillError('Failed to add due bill');
+    } finally {
+      setAddDueBillLoading(false);
+    }
   };
 
   // AddBankInstance handlers
@@ -324,7 +324,7 @@ const MainPage = ({ token }: MainPageProps) => {
     }
   };
 
-  const handleAddBankInstance = (e: React.FormEvent) => {
+  const handleAddBankInstance = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddBankInstanceError(null);
     setAddBankInstanceLoading(true);
@@ -333,8 +333,9 @@ const MainPage = ({ token }: MainPageProps) => {
       setAddBankInstanceLoading(false);
       return;
     }
-    import('./api/dueBillApi').then(({ addBankAccountInstance }) => {
-      addBankAccountInstance({
+    try {
+      const { addBankAccountInstance } = await import('./api/dueBillApi');
+      await addBankAccountInstance({
         bank_account: parseInt(addBankInstanceForm.bank_account),
         balance: parseFloat(addBankInstanceForm.balance),
         due_date: addBankInstanceForm.due_date,
@@ -344,18 +345,16 @@ const MainPage = ({ token }: MainPageProps) => {
           const val = parseInt(addBankInstanceForm.priority, 10);
           return isNaN(val) ? 0 : val;
         })(),
-      }, token)
-        .then(() => {
-          setShowAddBankInstanceModal(false);
-          setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0' });
-          setAddBankInstanceLoading(false);
-          refresh();
-        })
-        .catch(() => {
-          setAddBankInstanceError('Failed to add bank account instance');
-          setAddBankInstanceLoading(false);
-        });
-    });
+      }, token);
+      
+      setShowAddBankInstanceModal(false);
+      setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0' });
+      await refresh();
+    } catch (error) {
+      setAddBankInstanceError('Failed to add bank account instance');
+    } finally {
+      setAddBankInstanceLoading(false);
+    }
   };
 
   return (
