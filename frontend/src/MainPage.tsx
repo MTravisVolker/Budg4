@@ -125,7 +125,7 @@ const MainPage = ({ token }: MainPageProps) => {
 
   // Form states for each modal
   const [addDueBillForm, setAddDueBillForm] = useState<AddDueBillForm>({
-    bill: '', recurrence: '', amount_due: '', total_balance: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
+    bill: '', recurrence: '', amount_due: '', total_balance: '0', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
   });
   type AddBankInstanceForm = {
     bank_account: string;
@@ -522,7 +522,19 @@ const MainPage = ({ token }: MainPageProps) => {
       />
       {/* End Modals */}
       {loading && <div className="flex justify-center"><span className="loading loading-spinner loading-lg"></span></div>}
-      {error && <div className="alert alert-error mb-4">{error}</div>}
+      {error && (
+        <div className="alert alert-error mb-4">
+          {error}
+          {error.includes('session has expired') && (
+            <button 
+              className="btn btn-sm btn-error ml-2"
+              onClick={() => window.location.href = '/'}
+            >
+              Go to Login
+            </button>
+          )}
+        </div>
+      )}
       {!loading && !error && (
         <div className="overflow-x-auto rounded-lg shadow">
           <table className="table table-zebra w-full">
