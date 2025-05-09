@@ -85,7 +85,16 @@ export default function useMainPageData(token: string) {
       })
       .catch((error) => {
         if (axios.isAxiosError(error) && error.response?.status === 401) {
+          // Let the axios interceptor handle the session expiration
           setError('Your session has expired. Please log in again.');
+          // Clear any stored data
+          setDueBills([]);
+          setBankInstances([]);
+          setAccounts([]);
+          setBills([]);
+          setStatuses([]);
+          setRecurrences([]);
+          setCategories([]);
         } else {
           setError('Failed to fetch data');
         }
