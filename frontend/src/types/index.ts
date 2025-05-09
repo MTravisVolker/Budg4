@@ -31,8 +31,12 @@ export interface BankAccount {
 export interface Bill {
   id: number;
   name: string;
-  recurrence?: number | null;
-  default_amount_due?: string;
+  default_amount_due: string;
+  url: string;
+  draft_account: number | null;
+  category: number | null;
+  recurrence: number | null;
+  priority: number;
 }
 
 export interface Status {
