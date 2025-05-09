@@ -38,7 +38,17 @@ class BankAccountInstanceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return BankAccountInstance.objects.filter(bank_account__user=self.request.user)
+        queryset = BankAccountInstance.objects.filter(bank_account__user=self.request.user)
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        
+        if start_date and end_date:
+            queryset = queryset.filter(
+                pay_date__isnull=False,
+                pay_date__gte=start_date,
+                pay_date__lte=end_date
+            )
+        return queryset
 
 class BillViewSet(viewsets.ModelViewSet):
     serializer_class = BillSerializer
@@ -55,7 +65,17 @@ class DueBillViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return DueBill.objects.filter(bill__user=self.request.user)
+        queryset = DueBill.objects.filter(bill__user=self.request.user)
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        
+        if start_date and end_date:
+            queryset = queryset.filter(
+                pay_date__isnull=False,
+                pay_date__gte=start_date,
+                pay_date__lte=end_date
+            )
+        return queryset
 
 class AuditLogViewSet(viewsets.ModelViewSet):
     serializer_class = AuditLogSerializer

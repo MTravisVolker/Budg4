@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { DateRange, Range, RangeKeyDict } from 'react-date-range';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
 import useMainPageData from './hooks/useMainPageData';
 import useEditableCell from './hooks/useEditableCell';
 import MainTableBody from './components/MainTableBody';
@@ -93,7 +96,7 @@ function getAllRowsRaw(
 const MainPage = ({ token }: MainPageProps) => {
   // Fetch all main data and provide refresh, loading, error
   const {
-    dueBills, bankInstances, accounts, bills, statuses, recurrences, categories, loading, error, refresh
+    dueBills, bankInstances, accounts, bills, statuses, recurrences, categories, loading, error, refresh, dateRange, setDateRange
   } = useMainPageData(token);
 
   // Local state for add modals and forms
@@ -101,7 +104,14 @@ const MainPage = ({ token }: MainPageProps) => {
   const [addDueBillLoading, setAddDueBillLoading] = useState(false);
   const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
   const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [showDateRangePicker, setShowDateRangePicker] = useState(false);
+  const [dateRangeState, setDateRangeState] = useState<Range[]>([
+    {
+      startDate: new Date(),
+      endDate: new Date(),
+      key: 'selection'
+    }
+  ]);
   const [showAddDueBillModal, setShowAddDueBillModal] = useState(false);
   const [showAddBankInstanceModal, setShowAddBankInstanceModal] = useState(false);
   const [showAddBillModal, setShowAddBillModal] = useState(false);
@@ -131,6 +141,33 @@ const MainPage = ({ token }: MainPageProps) => {
   const [addBillForm, setAddBillForm] = useState<AddBillForm>({
     name: '', default_amount_due: '', url: '', draft_account: '', category: '', recurrence: '', priority: '0',
   });
+
+  const dateRangeRef = useRef<HTMLDivElement>(null);
+
+  // Close date picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dateRangeRef.current && !dateRangeRef.current.contains(event.target as Node)) {
+        setShowDateRangePicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Format date for display
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
 
   // Inline cell editing logic (encapsulated in custom hook)
   const {
@@ -364,20 +401,55 @@ const MainPage = ({ token }: MainPageProps) => {
         <div className="flex gap-2 items-center">
           <button className="btn btn-primary" onClick={() => setShowAddDueBillModal(true)}>Add Due Bill</button>
           <button className="btn btn-secondary" onClick={() => setShowAddBankInstanceModal(true)}>Add Bank Account Instance</button>
-          <input
-            type="date"
-            value={dateRange.start}
-            onChange={e => setDateRange(r => ({ ...r, start: e.target.value }))}
-            className="input input-bordered"
-            placeholder="Start date"
-          />
-          <input
-            type="date"
-            value={dateRange.end}
-            onChange={e => setDateRange(r => ({ ...r, end: e.target.value }))}
-            className="input input-bordered"
-            placeholder="End date"
-          />
+          <div className="relative" ref={dateRangeRef}>
+            <button 
+              className="btn btn-outline min-w-[200px] flex items-center justify-between"
+              onClick={() => setShowDateRangePicker(!showDateRangePicker)}
+            >
+              <span>
+                {dateRange.start && dateRange.end 
+                  ? `${formatDisplayDate(dateRange.start)} - ${formatDisplayDate(dateRange.end)}`
+                  : 'Select Date Range'}
+              </span>
+              <svg 
+                className={`w-4 h-4 transition-transform ${showDateRangePicker ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showDateRangePicker && (
+              <div className="absolute right-0 mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg">
+                <DateRange
+                  onChange={(ranges: RangeKeyDict) => {
+                    const selection = ranges.selection;
+                    setDateRangeState([selection]);
+                    if (selection.startDate && selection.endDate) {
+                      setDateRange({
+                        start: selection.startDate.toISOString().split('T')[0],
+                        end: selection.endDate.toISOString().split('T')[0]
+                      });
+                      // Close the picker when both dates are selected
+                      setShowDateRangePicker(false);
+                    }
+                  }}
+                  moveRangeOnFirstSelection={false}
+                  months={2}
+                  ranges={dateRangeState}
+                  direction="horizontal"
+                  preventSnapRefocus={true}
+                  calendarFocus="forwards"
+                  showDateDisplay={false}
+                  showMonthAndYearPickers={true}
+                  rangeColors={['#3b82f6']}
+                  minDate={new Date(2000, 0, 1)}
+                  maxDate={new Date(2100, 11, 31)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {/* Modals */}
