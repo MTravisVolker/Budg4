@@ -3,7 +3,11 @@ module.exports = {
     './src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      maxWidth: {
+        'custom': '3440px',
+      },
+    },
   },
   plugins: [
     require('@tailwindcss/forms'),

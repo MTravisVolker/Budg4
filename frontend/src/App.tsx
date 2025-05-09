@@ -52,14 +52,25 @@ function App() {
             originalRequest.headers['Authorization'] = `Bearer ${res.data.access}`;
             return axios(originalRequest);
           } catch (refreshError) {
+            // Clear all auth data and force login page
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
             setToken(null);
             setRefreshToken(null);
             sessionStorage.setItem('authMessage', 'Your session has expired. Please log in again.');
-            window.location.reload();
+            // Force a re-render to show login page
+            window.location.href = '/';
             return Promise.reject(refreshError);
           }
+        } else if (error.response?.status === 401) {
+          // Handle 401 errors when there's no refresh token or refresh failed
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          setToken(null);
+          setRefreshToken(null);
+          sessionStorage.setItem('authMessage', 'Your session has expired. Please log in again.');
+          // Force a re-render to show login page
+          window.location.href = '/';
         }
         return Promise.reject(error);
       }
@@ -124,7 +135,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-base-200 p-4">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-custom mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold">Budg</h1>
             <button onClick={handleLogout} className="btn btn-outline btn-error">Logout</button>

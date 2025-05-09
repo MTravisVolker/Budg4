@@ -461,7 +461,7 @@ const MainPage = ({ token }: MainPageProps) => {
                 <th>Status</th>
                 <th>Account</th>
                 <th>Priority</th>
-                <th>Amount/Balance</th>
+                <th>Payment</th>
               </tr>
             </thead>
             <tbody>
