@@ -4,7 +4,7 @@ import { addDueBill } from '../api/dueBillApi';
 export default function useAddDueBillModal(token: string, bills: any[], refresh: () => void) {
   const [showAddDueBill, setShowAddDueBill] = useState(false);
   const [addDueBillForm, setAddDueBillForm] = useState({
-    bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
+    bill: '', recurrence: '', amount_due: '', total_balance: '0', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
   });
   const [addDueBillError, setAddDueBillError] = useState<string | null>(null);
   const [addDueBillLoading, setAddDueBillLoading] = useState(false);
@@ -18,6 +18,9 @@ export default function useAddDueBillModal(token: string, bills: any[], refresh:
         bill: value,
         recurrence: selectedBill?.recurrence ? selectedBill.recurrence.toString() : '',
         amount_due: selectedBill?.default_amount_due ? selectedBill.default_amount_due.toString() : '',
+        total_balance: selectedBill?.total_balance ? selectedBill.total_balance.toString() : '0',
+        draft_account: selectedBill?.draft_account ? selectedBill.draft_account.toString() : '',
+        priority: selectedBill?.priority ? selectedBill.priority.toString() : '0',
       }));
     } else {
       setAddDueBillForm(form => ({ ...form, [name]: value }));
@@ -43,6 +46,7 @@ export default function useAddDueBillModal(token: string, bills: any[], refresh:
       bill: parseInt(addDueBillForm.bill),
       recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
       amount_due: parseFloat(addDueBillForm.amount_due),
+      total_balance: parseFloat(addDueBillForm.total_balance || '0'),
       draft_account: addDueBillForm.draft_account ? parseInt(addDueBillForm.draft_account) : null,
       due_date: addDueBillForm.due_date,
       pay_date: addDueBillForm.pay_date || null,
@@ -51,7 +55,7 @@ export default function useAddDueBillModal(token: string, bills: any[], refresh:
     }, token)
       .then(() => {
         setShowAddDueBill(false);
-        setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
+        setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', total_balance: '0', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
         setAddDueBillLoading(false);
         refresh();
       })
