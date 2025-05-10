@@ -119,7 +119,37 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
             <button type="button" className="btn btn-xs btn-link" onClick={row.type === 'DueBill' ? onAddBill : onAddAccount}>Add</button>
           </div>
         ) : (
-          row.name
+          row.type === 'DueBill' ? (
+            (() => {
+              const bill = bills.find(b => b.id === row.bill);
+              return bill?.url ? (
+                <a 
+                  href={bill.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {row.name}
+                </a>
+              ) : row.name;
+            })()
+          ) : (
+            (() => {
+              const account = accounts.find(a => a.id === row.bank_account);
+              return account?.url ? (
+                <a 
+                  href={account.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {row.name}
+                </a>
+              ) : row.name;
+            })()
+          )
         )}
       </td>
       {/* Pay Date */}

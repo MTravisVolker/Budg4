@@ -52,7 +52,7 @@ const BillsPage = ({ token }: BillsPageProps) => {
               <tr>
                 <th>Name</th>
                 <th>Amount Due</th>
-                <th>URL</th>
+                <th className="max-w-[500px]">URL</th>
                 <th>Draft Account</th>
                 <th>Category</th>
                 <th>Recurrence</th>
@@ -65,7 +65,7 @@ const BillsPage = ({ token }: BillsPageProps) => {
                 <tr key={bill.id}>
                   <td>{bill.name}</td>
                   <td>{bill.default_amount_due}</td>
-                  <td>{bill.url ? <a href={bill.url} target="_blank" rel="noopener noreferrer" className="link link-primary">{bill.url}</a> : '-'}</td>
+                  <td className="max-w-[500px] break-all">{bill.url ? <a href={bill.url} target="_blank" rel="noopener noreferrer" className="link link-primary">{bill.url}</a> : '-'}</td>
                   <td>{accounts.find(acc => acc.id === bill.draft_account)
                     ? <span style={{ color: accounts.find(acc => acc.id === bill.draft_account)?.font_color || undefined, fontWeight: 'bold' }}>
                         {accounts.find(acc => acc.id === bill.draft_account)?.name}

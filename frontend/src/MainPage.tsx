@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DateRange, Range, RangeKeyDict } from 'react-date-range';
+import { useNavigate } from 'react-router-dom';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import useMainPageData from './hooks/useMainPageData';
@@ -94,6 +95,7 @@ function getAllRowsRaw(
 }
 
 const MainPage = ({ token }: MainPageProps) => {
+  const navigate = useNavigate();
   // Fetch all main data and provide refresh, loading, error
   const {
     dueBills, bankInstances, accounts, bills, statuses, recurrences, categories, loading, error, refresh, dateRange, setDateRange
@@ -528,7 +530,7 @@ const MainPage = ({ token }: MainPageProps) => {
           {error.includes('session has expired') && (
             <button 
               className="btn btn-sm btn-error ml-2"
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
             >
               Go to Login
             </button>
