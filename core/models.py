@@ -29,6 +29,7 @@ class BankAccount(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     font_color = models.CharField(max_length=20)
+    url = models.URLField(blank=True, max_length=2083)
 
     def __str__(self):
         return self.name
@@ -50,7 +51,7 @@ class Bill(models.Model):
     name = models.CharField(max_length=100)
     default_amount_due = models.DecimalField(max_digits=10, decimal_places=2)
     total_balance = models.DecimalField(max_digits=10, decimal_places=2)
-    url = models.URLField(blank=True)
+    url = models.URLField(blank=True, max_length=2083)
     draft_account = models.ForeignKey(BankAccount, on_delete=models.SET_NULL, null=True, related_name='bills')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     recurrence = models.ForeignKey(Recurrence, on_delete=models.SET_NULL, null=True)

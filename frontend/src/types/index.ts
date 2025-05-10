@@ -26,6 +26,7 @@ export interface BankAccount {
   id: number;
   name: string;
   font_color: string;
+  url?: string;
 }
 
 export interface Bill {

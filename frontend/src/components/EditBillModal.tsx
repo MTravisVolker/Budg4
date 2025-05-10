@@ -1,16 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+// Configure axios defaults
+axios.defaults.baseURL = 'http://localhost:8000';
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.withCredentials = true; // Enable sending cookies if needed
+
 interface EditBillModalProps {
   show: boolean;
   onClose: () => void;
   token: string;
-  bill: any; // Bill type
+  bill: {
+    id: number;
+    name: string;
+    default_amount_due?: number;
+    total_balance?: number;
+    url?: string;
+    draft_account?: number;
+    category?: number;
+    recurrence?: number;
+    priority?: number;
+  };
   accounts: { id: number; name: string; font_color: string }[];
   categories: { id: number; name: string }[];
   recurrences: { id: number; name: string }[];
   onSaved?: () => void;
 }
+
+const MAX_URL_LENGTH = 2083;
 
 const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bill, accounts, categories, recurrences, onSaved }) => {
   const [form, setForm] = useState({
@@ -44,17 +61,30 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
   if (!show) return null;
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'url' && value.length > MAX_URL_LENGTH) {
+      setFormError(`URL must be no more than ${MAX_URL_LENGTH} characters`);
+      return;
+    }
+    setForm({ ...form, [name]: value });
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setFormLoading(true);
+    
     if (!form.name || !form.default_amount_due || !form.total_balance) {
       setFormError('Name, Amount Due, and Total Balance are required');
       setFormLoading(false);
       return;
     }
+
+    if (form.url && form.url.length > MAX_URL_LENGTH) {
+      setFormError(`URL must be no more than ${MAX_URL_LENGTH} characters`);
+      setFormLoading(false);
+      return;
+    }
+
     axios.put(`/api/bills/${bill.id}/`, {
       ...form,
       default_amount_due: parseFloat(form.default_amount_due),
@@ -64,15 +94,22 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
       recurrence: form.recurrence ? parseInt(form.recurrence) : null,
       priority: form.priority ? parseInt(form.priority) : 0,
     }, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
     })
       .then(() => {
         setFormLoading(false);
         onClose();
-        onSaved && onSaved();
+        if (onSaved) onSaved();
       })
-      .catch(() => {
-        setFormError('Failed to update bill');
+      .catch((error) => {
+        const errorMessage = error.response?.data?.detail || 
+                           (typeof error.response?.data === 'object' ? 
+                             Object.values(error.response.data).flat().join(', ') : 
+                             'Failed to update bill');
+        setFormError(errorMessage);
         setFormLoading(false);
       });
   };
@@ -109,8 +146,15 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
           <div className="form-control">
             <label className="label">
               <span className="label-text">URL</span>
+              <span className="label-text-alt">{form.url.length}/{MAX_URL_LENGTH}</span>
             </label>
-            <input name="url" value={form.url} onChange={handleFormChange} className="input input-bordered" />
+            <input 
+              name="url" 
+              value={form.url} 
+              onChange={handleFormChange} 
+              className="input input-bordered" 
+              maxLength={MAX_URL_LENGTH}
+            />
           </div>
           <div className="form-control">
             <label className="label">
