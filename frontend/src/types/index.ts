@@ -32,6 +32,7 @@ export interface Bill {
   id: number;
   name: string;
   default_amount_due: string;
+  total_balance: string;
   url: string;
   draft_account: number | null;
   category: number | null;

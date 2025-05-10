@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { addDueBill } from '../api/dueBillApi';
+import { Bill } from '../types';
 
-export default function useAddDueBillModal(token: string, bills: any[], refresh: () => void) {
+export default function useAddDueBillModal(token: string, bills: Bill[], refresh: () => void) {
   const [showAddDueBill, setShowAddDueBill] = useState(false);
   const [addDueBillForm, setAddDueBillForm] = useState({
     bill: '', recurrence: '', amount_due: '', total_balance: '0', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
@@ -42,11 +43,25 @@ export default function useAddDueBillModal(token: string, bills: any[], refresh:
       setAddDueBillLoading(false);
       return;
     }
+
+    // Ensure total_balance is a valid decimal
+    let totalBalance = 0;
+    try {
+      totalBalance = parseFloat(addDueBillForm.total_balance || '0');
+      if (isNaN(totalBalance)) {
+        throw new Error('Invalid number');
+      }
+    } catch {
+      setAddDueBillError('Total Balance must be a valid number');
+      setAddDueBillLoading(false);
+      return;
+    }
+
     addDueBill({
       bill: parseInt(addDueBillForm.bill),
       recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
       amount_due: parseFloat(addDueBillForm.amount_due),
-      total_balance: parseFloat(addDueBillForm.total_balance || '0'),
+      total_balance: totalBalance,
       draft_account: addDueBillForm.draft_account ? parseInt(addDueBillForm.draft_account) : null,
       due_date: addDueBillForm.due_date,
       pay_date: addDueBillForm.pay_date || null,
