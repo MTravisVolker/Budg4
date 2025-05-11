@@ -85,6 +85,12 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
         status: row.statusObj?.name,
         account: row.accountObj?.name
       })}`}
+      onClick={(e) => {
+        // If we're not clicking on an input or select element, trigger blur
+        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement)) {
+          handleEditInputBlur();
+        }
+      }}
     >
       {/* Type */}
       <td style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}>{row.type === 'DueBill' ? 'Due Bill' : 'Account Instance'}</td>
