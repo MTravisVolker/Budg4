@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Auto Agent running Termainal
+globs: 
+alwaysApply: true
+---
+
+- Know that you are running on a Windows OS 
+- Know that you are running PowerShell as the terminal.
+- Make all commands PowerShell compatibale commands.
+
+- Always show terminal output in the chat window.

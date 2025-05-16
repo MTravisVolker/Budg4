@@ -36,7 +36,7 @@ const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ show, onClose, toke
   };
 
   return (
-    <div className="modal modal-open z-50" onClick={onClose}>
+    <div className="modal modal-open z-50" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="modal-box w-full max-w-lg relative" onClick={e => e.stopPropagation()}>
         <button
           type="button"
@@ -44,7 +44,7 @@ const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ show, onClose, toke
           onClick={onClose}
           aria-label="Close"
         >✕</button>
-        <h2 className="font-bold text-xl mb-4">Add Category</h2>
+        <h2 id="modal-title" className="font-bold text-xl mb-4">Add Category</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="form-control">
             <label className="label" htmlFor="category-name">
