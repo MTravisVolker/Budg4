@@ -47,16 +47,16 @@ const AddRecurrenceModal: React.FC<AddRecurrenceModalProps> = ({ show, onClose, 
         <h2 className="font-bold text-xl mb-4">Add Recurrence</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="form-control">
-            <label className="label">
+            <label className="label" htmlFor="recurrence-name">
               <span className="label-text">Name</span>
             </label>
-            <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+            <input id="recurrence-name" name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
           </div>
           <div className="form-control">
-            <label className="label">
+            <label className="label" htmlFor="recurrence-interval">
               <span className="label-text">Interval</span>
             </label>
-            <input name="interval" value={form.interval} onChange={handleFormChange} className="input input-bordered" />
+            <input id="recurrence-interval" name="interval" value={form.interval} onChange={handleFormChange} className="input input-bordered" />
           </div>
           <div className="flex gap-2 mt-2">
             <button type="submit" disabled={formLoading} className="btn btn-primary w-full">Add</button>

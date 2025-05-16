@@ -302,8 +302,8 @@ Discover the joy of effortless budgeting! Streamline your finances, stay on top 
    - **Acceptance Criteria:**
      - E2E tests cover critical user flows.
      - Tests run automatically and pass before deployment.
-51. **As a Lead Developer**, I want all design decisions to focus on simplicity and GPT-4.1 ability to accurately assist.
-52. **As a Lead Developer**, I want all technologies chosen to focus on simplicity and GPT-4.1 ability to accurately assist.
+51. **As a Lead Developer**, I want all design decisions to focus on simplicity and GPT-4.5 ability to accurately assist.
+52. **As a Lead Developer**, I want all technologies chosen to focus on simplicity and GPT-4.5 ability to accurately assist.
 
 ## Site Reliability Engineering
 

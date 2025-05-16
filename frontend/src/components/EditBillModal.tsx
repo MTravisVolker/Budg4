@@ -40,6 +40,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
     recurrence: '',
     priority: '0',
   });
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
@@ -62,29 +63,27 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'url' && value.length > MAX_URL_LENGTH) {
-      setFormError(`URL must be no more than ${MAX_URL_LENGTH} characters`);
-      return;
-    }
     setForm({ ...form, [name]: value });
+    setFieldErrors(errors => ({ ...errors, [name]: '' })); // Clear field error on change
+    if (name === 'url' && value.length > MAX_URL_LENGTH) {
+      setFieldErrors(errors => ({ ...errors, url: `URL must be no more than ${MAX_URL_LENGTH} characters` }));
+    }
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setFormLoading(true);
-    
-    if (!form.name || !form.default_amount_due || !form.total_balance) {
-      setFormError('Name, Amount Due, and Total Balance are required');
+    const errors: { [key: string]: string } = {};
+    if (!form.name) errors.name = 'Name is required';
+    if (!form.default_amount_due) errors.default_amount_due = 'Amount Due is required';
+    if (!form.total_balance) errors.total_balance = 'Total Balance is required';
+    if (form.url && form.url.length > MAX_URL_LENGTH) errors.url = `URL must be no more than ${MAX_URL_LENGTH} characters`;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       setFormLoading(false);
       return;
     }
-
-    if (form.url && form.url.length > MAX_URL_LENGTH) {
-      setFormError(`URL must be no more than ${MAX_URL_LENGTH} characters`);
-      setFormLoading(false);
-      return;
-    }
-
+    setFieldErrors({});
     axios.put(`/api/bills/${bill.id}/`, {
       ...form,
       default_amount_due: parseFloat(form.default_amount_due),
@@ -106,9 +105,9 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
       })
       .catch((error) => {
         const errorMessage = error.response?.data?.detail || 
-                           (typeof error.response?.data === 'object' ? 
-                             Object.values(error.response.data).flat().join(', ') : 
-                             'Failed to update bill');
+          (typeof error.response?.data === 'object' ? 
+            Object.values(error.response.data).flat().join(', ') : 
+            'Failed to update bill');
         setFormError(errorMessage);
         setFormLoading(false);
       });
@@ -124,81 +123,171 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
           aria-label="Close"
         >✕</button>
         <h2 className="font-bold text-xl mb-4">Edit Bill</h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+          {formError && <div className="alert alert-error my-2" role="alert">{formError}</div>}
           <div className="form-control">
-            <label className="label">
-              <span className="label-text">Name</span>
+            <label className="label" htmlFor="bill-name">
+              <span>Name</span>
             </label>
-            <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Amount Due</span>
-            </label>
-            <input name="default_amount_due" value={form.default_amount_due} onChange={handleFormChange} required type="number" step="0.01" className="input input-bordered" />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Total Balance</span>
-            </label>
-            <input name="total_balance" value={form.total_balance} onChange={handleFormChange} required type="number" step="0.01" className="input input-bordered" />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">URL</span>
-              <span className="label-text-alt">{form.url.length}/{MAX_URL_LENGTH}</span>
-            </label>
-            <input 
-              name="url" 
-              value={form.url} 
-              onChange={handleFormChange} 
-              className="input input-bordered" 
-              maxLength={MAX_URL_LENGTH}
+            <input
+              type="text"
+              id="bill-name"
+              name="name"
+              className="input input-bordered"
+              value={form.name}
+              onChange={handleFormChange}
+              required
+              aria-invalid={!!fieldErrors.name}
+              aria-describedby={fieldErrors.name ? 'bill-name-error' : undefined}
+              data-testid="name-input"
             />
+            {fieldErrors.name && <span id="bill-name-error" className="text-error text-sm mt-1" data-testid="name-error">{fieldErrors.name}</span>}
           </div>
           <div className="form-control">
-            <label className="label">
-              <span className="label-text">Draft Account</span>
+            <label className="label" htmlFor="bill-amount-due">
+              <span>Amount Due</span>
             </label>
-            <select name="draft_account" value={form.draft_account} onChange={handleFormChange} className="input input-bordered">
+            <input
+              type="number"
+              id="bill-amount-due"
+              name="default_amount_due"
+              className="input input-bordered"
+              value={form.default_amount_due}
+              onChange={handleFormChange}
+              step="0.01"
+              required
+              aria-invalid={!!fieldErrors.default_amount_due}
+              aria-describedby={fieldErrors.default_amount_due ? 'bill-amount-due-error' : undefined}
+              data-testid="amount-due-input"
+            />
+            {fieldErrors.default_amount_due && <span id="bill-amount-due-error" className="text-error text-sm mt-1" data-testid="amount-due-error">{fieldErrors.default_amount_due}</span>}
+          </div>
+          <div className="form-control">
+            <label className="label" htmlFor="bill-total-balance">
+              <span>Total Balance</span>
+            </label>
+            <input
+              type="number"
+              id="bill-total-balance"
+              name="total_balance"
+              className="input input-bordered"
+              value={form.total_balance}
+              onChange={handleFormChange}
+              step="0.01"
+              required
+              aria-invalid={!!fieldErrors.total_balance}
+              aria-describedby={fieldErrors.total_balance ? 'bill-total-balance-error' : undefined}
+              data-testid="total-balance-input"
+            />
+            {fieldErrors.total_balance && <span id="bill-total-balance-error" className="text-error text-sm mt-1" data-testid="total-balance-error">{fieldErrors.total_balance}</span>}
+          </div>
+          <div className="form-control">
+            <label className="label" htmlFor="bill-url">
+              <span>URL</span>
+              <span className="label-text-alt">{form.url.length} / 2083</span>
+            </label>
+            <input
+              type="text"
+              id="bill-url"
+              name="url"
+              className="input input-bordered"
+              value={form.url}
+              onChange={handleFormChange}
+              maxLength={2083}
+              aria-invalid={!!fieldErrors.url}
+              aria-describedby={fieldErrors.url ? 'bill-url-error' : undefined}
+              data-testid="url-input"
+            />
+            {fieldErrors.url && <span id="bill-url-error" className="text-error text-sm mt-1" data-testid="url-error">{fieldErrors.url}</span>}
+          </div>
+          <div className="form-control">
+            <label className="label" htmlFor="bill-draft-account">
+              <span>Draft Account</span>
+            </label>
+            <select
+              id="bill-draft-account"
+              name="draft_account"
+              className="input input-bordered"
+              value={form.draft_account}
+              onChange={handleFormChange}
+              data-testid="draft-account-select"
+            >
               <option value="">Select account</option>
-              {accounts.map(acc => (
-                <option key={acc.id} value={acc.id}>{acc.name}</option>
+              {accounts.map(account => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
               ))}
             </select>
           </div>
           <div className="form-control">
-            <label className="label">
-              <span className="label-text">Category</span>
+            <label className="label" htmlFor="bill-category">
+              <span>Category</span>
             </label>
-            <select name="category" value={form.category} onChange={handleFormChange} className="input input-bordered">
+            <select
+              id="bill-category"
+              name="category"
+              className="input input-bordered"
+              value={form.category}
+              onChange={handleFormChange}
+              data-testid="category-select"
+            >
               <option value="">Select category</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              {categories.map(category => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
               ))}
             </select>
           </div>
           <div className="form-control">
-            <label className="label">
-              <span className="label-text">Recurrence</span>
+            <label className="label" htmlFor="bill-recurrence">
+              <span>Recurrence</span>
             </label>
-            <select name="recurrence" value={form.recurrence} onChange={handleFormChange} className="input input-bordered">
+            <select
+              id="bill-recurrence"
+              name="recurrence"
+              className="input input-bordered"
+              value={form.recurrence}
+              onChange={handleFormChange}
+              data-testid="recurrence-select"
+            >
               <option value="">Select recurrence</option>
-              {recurrences.map(rec => (
-                <option key={rec.id} value={rec.id}>{rec.name}</option>
+              {recurrences.map(recurrence => (
+                <option key={recurrence.id} value={recurrence.id}>
+                  {recurrence.name}
+                </option>
               ))}
             </select>
           </div>
           <div className="form-control">
-            <label className="label">
-              <span className="label-text">Priority</span>
+            <label className="label" htmlFor="bill-priority">
+              <span>Priority</span>
             </label>
-            <input name="priority" value={form.priority} onChange={handleFormChange} type="number" className="input input-bordered" />
+            <select
+              id="bill-priority"
+              name="priority"
+              className="input input-bordered"
+              value={form.priority}
+              onChange={handleFormChange}
+              data-testid="priority-select"
+            >
+              <option value="0">Low</option>
+              <option value="1">Medium</option>
+              <option value="2">High</option>
+            </select>
           </div>
-          <div className="flex gap-2 mt-2">
-            <button type="submit" disabled={formLoading} className="btn btn-primary w-full">Save</button>
+          <div className="modal-action">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={formLoading}
+              data-testid="submit-button"
+              aria-busy={formLoading}
+            >
+              {formLoading ? 'Saving...' : 'Save'}
+            </button>
           </div>
-          {formError && <div className="text-error text-center">{formError}</div>}
         </form>
       </div>
     </div>

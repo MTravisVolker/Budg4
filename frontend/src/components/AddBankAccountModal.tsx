@@ -47,25 +47,28 @@ const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ show, onClose
         <h2 className="font-bold text-xl mb-4">Add Bank Account</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="form-control">
-            <label className="label">
+            <label className="label" htmlFor="bank-account-name">
               <span className="label-text">Name</span>
             </label>
-            <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+            <input id="bank-account-name" name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
           </div>
           <div className="form-control">
-            <label className="label">
+            <label className="label" htmlFor="bank-account-font-color-text">
               <span className="label-text">Font Color</span>
             </label>
             <div className="flex items-center gap-2">
               <input
+                id="bank-account-font-color"
                 name="font_color"
                 type="color"
                 value={form.font_color || '#000000'}
                 onChange={handleFormChange}
                 className="input input-bordered w-12 h-12 p-0 border-none bg-transparent"
                 style={{ minWidth: '3rem' }}
+                aria-label="Font Color Picker"
               />
               <input
+                id="bank-account-font-color-text"
                 name="font_color"
                 type="text"
                 value={form.font_color}
@@ -73,6 +76,7 @@ const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ show, onClose
                 placeholder="#000000"
                 className="input input-bordered w-32"
                 maxLength={20}
+                aria-label="Font Color Text"
               />
             </div>
           </div>

@@ -47,10 +47,10 @@ const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ show, onClose, toke
         <h2 className="font-bold text-xl mb-4">Add Category</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="form-control">
-            <label className="label">
+            <label className="label" htmlFor="category-name">
               <span className="label-text">Name</span>
             </label>
-            <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+            <input id="category-name" name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
           </div>
           <div className="flex gap-2 mt-2">
             <button type="submit" disabled={formLoading} className="btn btn-primary w-full">Add</button>

@@ -112,16 +112,16 @@ function AppContent() {
           )}
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div className="form-control">
-              <label className="label">
+              <label className="label" htmlFor="login-username">
                 <span className="label-text">Username</span>
               </label>
-              <input className="input input-bordered" value={username} onChange={e => setUsername(e.target.value)} required />
+              <input id="login-username" className="input input-bordered" value={username} onChange={e => setUsername(e.target.value)} required />
             </div>
             <div className="form-control">
-              <label className="label">
+              <label className="label" htmlFor="login-password">
                 <span className="label-text">Password</span>
               </label>
-              <input className="input input-bordered" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+              <input id="login-password" className="input input-bordered" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
             </div>
             <button type="submit" className="btn btn-primary">Login</button>
             {loginError && <div className="text-error text-center">{loginError}</div>}
