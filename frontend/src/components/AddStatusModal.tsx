@@ -47,25 +47,28 @@ const AddStatusModal: React.FC<AddStatusModalProps> = ({ show, onClose, token, o
         <h2 className="font-bold text-xl mb-4">Add Status</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="form-control">
-            <label className="label">
+            <label className="label" htmlFor="status-name">
               <span className="label-text">Name</span>
             </label>
-            <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+            <input id="status-name" name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
           </div>
           <div className="form-control">
-            <label className="label">
+            <label className="label" htmlFor="status-color">
               <span className="label-text">Highlight Color</span>
             </label>
             <div className="flex items-center gap-2">
               <input
+                id="status-color-picker"
                 name="highlight_color"
                 type="color"
                 value={form.highlight_color || '#000000'}
                 onChange={handleFormChange}
                 className="input input-bordered w-12 h-12 p-0 border-none bg-transparent"
                 style={{ minWidth: '3rem' }}
+                aria-label="Color Picker"
               />
               <input
+                id="status-color-text"
                 name="highlight_color"
                 type="text"
                 value={form.highlight_color}
@@ -73,6 +76,7 @@ const AddStatusModal: React.FC<AddStatusModalProps> = ({ show, onClose, token, o
                 placeholder="#000000"
                 className="input input-bordered w-32"
                 maxLength={20}
+                aria-label="Highlight Color Text"
               />
             </div>
           </div>
