@@ -45,6 +45,47 @@ describe('AddCategoryModal', () => {
     expect(mockProps.onClose).toHaveBeenCalled();
   });
 
+  it('calls onClose when clicking outside the modal', async () => {
+    await act(async () => {
+      render(<AddCategoryModal {...mockProps} />);
+    });
+    const modalOverlay = screen.getByRole('dialog');
+    await act(async () => {
+      await userEvent.click(modalOverlay);
+    });
+    expect(mockProps.onClose).toHaveBeenCalled();
+  });
+
+  it('does not call onClose when clicking inside the modal box', async () => {
+    await act(async () => {
+      render(<AddCategoryModal {...mockProps} />);
+    });
+    const modalBox = screen.getByRole('dialog').querySelector('.modal-box');
+    await act(async () => {
+      await userEvent.click(modalBox!);
+    });
+    expect(mockProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it('updates form state when typing in the name field', async () => {
+    await act(async () => {
+      render(<AddCategoryModal {...mockProps} />);
+    });
+    const nameInput = screen.getByLabelText(/name/i);
+    await act(async () => {
+      await userEvent.type(nameInput, 'Test Category');
+    });
+    expect(nameInput).toHaveValue('Test Category');
+  });
+
+  it('requires the name field', async () => {
+    await act(async () => {
+      render(<AddCategoryModal {...mockProps} />);
+    });
+    const nameInput = screen.getByLabelText(/name/i);
+    expect(nameInput).toBeRequired();
+  });
+
   it('submits the form with correct data', async () => {
     mockedAxios.post.mockResolvedValueOnce({ data: {} });
     
@@ -101,6 +142,58 @@ describe('AddCategoryModal', () => {
     // Wait for error message to appear
     await waitFor(() => {
       expect(screen.getByText('Failed to add category')).toBeInTheDocument();
+    });
+  });
+
+  it('disables submit button during form submission', async () => {
+    mockedAxios.post.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+    
+    await act(async () => {
+      render(<AddCategoryModal {...mockProps} />);
+    });
+    
+    // Fill in the form
+    await act(async () => {
+      await userEvent.type(screen.getByLabelText(/name/i), 'Test Category');
+    });
+    
+    // Submit the form
+    const submitButton = screen.getByRole('button', { name: /add/i });
+    await act(async () => {
+      await userEvent.click(submitButton);
+    });
+    
+    // Check if button is disabled during submission
+    expect(submitButton).toBeDisabled();
+    
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
+  });
+
+  it('resets form after successful submission', async () => {
+    mockedAxios.post.mockResolvedValueOnce({ data: {} });
+    
+    await act(async () => {
+      render(<AddCategoryModal {...mockProps} />);
+    });
+    
+    // Fill in the form
+    const nameInput = screen.getByLabelText(/name/i);
+    await act(async () => {
+      await userEvent.type(nameInput, 'Test Category');
+    });
+    
+    // Submit the form
+    const submitButton = screen.getByRole('button', { name: /add/i });
+    await act(async () => {
+      await userEvent.click(submitButton);
+    });
+    
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(nameInput).toHaveValue('');
     });
   });
 }); 
