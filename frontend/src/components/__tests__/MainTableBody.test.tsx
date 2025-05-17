@@ -29,7 +29,11 @@ describe('MainTableBody', () => {
 
   it('renders empty state when no data is provided', async () => {
     await act(async () => {
-      render(<MainTableBody {...mockProps} />);
+      render(
+        <table>
+          <MainTableBody {...mockProps} />
+        </table>
+      );
     });
     // Since the component returns a fragment with no visible content when empty,
     // we just verify it renders without errors
@@ -88,7 +92,11 @@ describe('MainTableBody', () => {
     };
 
     await act(async () => {
-      render(<MainTableBody {...props} />);
+      render(
+        <table>
+          <MainTableBody {...props} />
+        </table>
+      );
     });
 
     // Verify bank account instance is rendered
@@ -165,7 +173,11 @@ describe('MainTableBody', () => {
     };
 
     await act(async () => {
-      render(<MainTableBody {...props} />);
+      render(
+        <table>
+          <MainTableBody {...props} />
+        </table>
+      );
     });
 
     const rows = screen.getAllByRole('row');
@@ -241,7 +253,11 @@ describe('MainTableBody', () => {
     };
 
     await act(async () => {
-      render(<MainTableBody {...props} />);
+      render(
+        <table>
+          <MainTableBody {...props} />
+        </table>
+      );
     });
 
     // Subtotal should be 1000 - (100 + 200) = 700
@@ -319,7 +335,11 @@ describe('MainTableBody', () => {
     };
 
     await act(async () => {
-      render(<MainTableBody {...props} />);
+      render(
+        <table>
+          <MainTableBody {...props} />
+        </table>
+      );
     });
 
     // Subtotal should be 1000 - 100 = 900 (cleared bill not included)
@@ -370,7 +390,11 @@ describe('MainTableBody', () => {
     };
 
     await act(async () => {
-      render(<MainTableBody {...props} />);
+      render(
+        <table>
+          <MainTableBody {...props} />
+        </table>
+      );
     });
 
     // Verify due bill is rendered in catch-all group
