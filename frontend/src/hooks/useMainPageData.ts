@@ -54,6 +54,7 @@ export default function useMainPageData(token: string) {
   const fetchAll = useCallback(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     if (dateRange.start && dateRange.end) {
       params.append('start_date', dateRange.start);
@@ -77,6 +78,7 @@ export default function useMainPageData(token: string) {
         setRecurrences(recurrencesRes.data);
         setCategories(categoriesRes.data);
         setLoading(false);
+        setError(null);
 
         // Set default date range after first load if not already set
         if (!dateRange.start && !dateRange.end) {
