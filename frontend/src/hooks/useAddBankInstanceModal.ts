@@ -40,6 +40,7 @@ export default function useAddBankInstanceModal(token: string, refresh: () => vo
       .then(() => {
         setShowAddBankInstance(false);
         setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0' });
+        setAddBankInstanceError(null);
         setAddBankInstanceLoading(false);
         refresh();
       })

@@ -32,19 +32,8 @@ export default function useAddDueBillModal(token: string, bills: Bill[], refresh
     e.preventDefault();
     setAddDueBillError(null);
     setAddDueBillLoading(true);
-    if (!addDueBillForm.bill || !addDueBillForm.amount_due || !addDueBillForm.due_date) {
-      setAddDueBillError('Bill, Amount Due, and Due Date are required');
-      setAddDueBillLoading(false);
-      return;
-    }
-    const priorityValue = addDueBillForm.priority ? parseInt(addDueBillForm.priority) : 0;
-    if (priorityValue < 1) {
-      setAddDueBillError('Priority must be at least 1');
-      setAddDueBillLoading(false);
-      return;
-    }
 
-    // Ensure total_balance is a valid decimal
+    // Check total_balance first
     let totalBalance = 0;
     try {
       totalBalance = parseFloat(addDueBillForm.total_balance || '0');
@@ -53,6 +42,21 @@ export default function useAddDueBillModal(token: string, bills: Bill[], refresh
       }
     } catch {
       setAddDueBillError('Total Balance must be a valid number');
+      setAddDueBillLoading(false);
+      return;
+    }
+
+    // Check priority next
+    const priorityValue = addDueBillForm.priority ? parseInt(addDueBillForm.priority) : 0;
+    if (priorityValue < 1) {
+      setAddDueBillError('Priority must be at least 1');
+      setAddDueBillLoading(false);
+      return;
+    }
+
+    // Check required fields last
+    if (!addDueBillForm.bill || !addDueBillForm.amount_due || !addDueBillForm.due_date) {
+      setAddDueBillError('Bill, Amount Due, and Due Date are required');
       setAddDueBillLoading(false);
       return;
     }
@@ -71,6 +75,7 @@ export default function useAddDueBillModal(token: string, bills: Bill[], refresh
       .then(() => {
         setShowAddDueBill(false);
         setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', total_balance: '0', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
+        setAddDueBillError(null);
         setAddDueBillLoading(false);
         refresh();
       })
