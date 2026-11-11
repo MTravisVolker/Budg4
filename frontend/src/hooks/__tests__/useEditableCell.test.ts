@@ -72,4 +72,18 @@ describe('useEditableCell', () => {
     expect(result.current.editingCell).toBeNull();
     expect(result.current.savingEdit).toBe(false);
   });
+
+  it('rolls the cell back when save fails', async () => {
+    onSave.mockRejectedValueOnce(new Error('save failed'));
+    const { result } = renderHook(() => useEditableCell(onSave));
+    act(() => {
+      result.current.handleCellDoubleClick({ id: 1, type: 'DueBill' }, 'DueBill', 'amount_due', '10');
+    });
+    await act(async () => {
+      result.current.handleEditInputBlur();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(result.current.editingCell).toBeNull();
+    expect(result.current.savingEdit).toBe(false);
+  });
 }); 

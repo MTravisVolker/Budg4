@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError } from '../utils/apiError';
+import FieldHint from './FieldHint';
 
 // Configure axios defaults
 axios.defaults.baseURL = 'http://localhost:8000';
@@ -104,11 +106,9 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
         if (onSaved) onSaved();
       })
       .catch((error) => {
-        const errorMessage = error.response?.data?.detail || 
-          (typeof error.response?.data === 'object' ? 
-            Object.values(error.response.data).flat().join(', ') : 
-            'Failed to update bill');
-        setFormError(errorMessage);
+        const parsed = parseApiError(error);
+        setFieldErrors(parsed.fieldErrors);
+        if (parsed.message) setFormError(parsed.message);
         setFormLoading(false);
       });
   };
@@ -133,7 +133,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
               type="text"
               id="bill-name"
               name="name"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'name')}
               value={form.name}
               onChange={handleFormChange}
               required
@@ -151,7 +151,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
               type="number"
               id="bill-amount-due"
               name="default_amount_due"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'default_amount_due')}
               value={form.default_amount_due}
               onChange={handleFormChange}
               step="0.01"
@@ -170,7 +170,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
               type="number"
               id="bill-total-balance"
               name="total_balance"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'total_balance')}
               value={form.total_balance}
               onChange={handleFormChange}
               step="0.01"
@@ -190,7 +190,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
               type="text"
               id="bill-url"
               name="url"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'url')}
               value={form.url}
               onChange={handleFormChange}
               maxLength={2083}
@@ -207,7 +207,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
             <select
               id="bill-draft-account"
               name="draft_account"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'draft_account')}
               value={form.draft_account}
               onChange={handleFormChange}
               data-testid="draft-account-select"
@@ -219,6 +219,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
                 </option>
               ))}
             </select>
+            <FieldHint message={fieldErrors.draft_account} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="bill-category">
@@ -227,7 +228,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
             <select
               id="bill-category"
               name="category"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'category')}
               value={form.category}
               onChange={handleFormChange}
               data-testid="category-select"
@@ -239,6 +240,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
                 </option>
               ))}
             </select>
+            <FieldHint message={fieldErrors.category} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="bill-recurrence">
@@ -247,7 +249,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
             <select
               id="bill-recurrence"
               name="recurrence"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'recurrence')}
               value={form.recurrence}
               onChange={handleFormChange}
               data-testid="recurrence-select"
@@ -259,6 +261,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
                 </option>
               ))}
             </select>
+            <FieldHint message={fieldErrors.recurrence} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="bill-priority">
@@ -267,7 +270,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
             <select
               id="bill-priority"
               name="priority"
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'priority')}
               value={form.priority}
               onChange={handleFormChange}
               data-testid="priority-select"
@@ -276,6 +279,7 @@ const EditBillModal: React.FC<EditBillModalProps> = ({ show, onClose, token, bil
               <option value="1">Medium</option>
               <option value="2">High</option>
             </select>
+            <FieldHint message={fieldErrors.priority} />
           </div>
           <div className="modal-action">
             <button

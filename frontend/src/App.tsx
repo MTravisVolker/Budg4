@@ -140,7 +140,7 @@ function AppContent() {
         </div>
         {/* Tab Navigation */}
         <div className="tabs mb-8 flex gap-2 items-center">
-          <NavLink to="/" className={({ isActive }: { isActive: boolean }) => isActive ? 'tab tab-active' : 'tab'}>Home</NavLink>
+          <NavLink to="/" className={({ isActive }) => isActive ? 'tab tab-active' : 'tab'}>Home</NavLink>
           <div className="dropdown" id="configure-dropdown" ref={configureRef}>
             <button
               type="button"
@@ -156,11 +156,11 @@ function AppContent() {
                 className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 z-50"
                 onClick={() => setConfigureOpen(false)}
               >
-                <li><NavLink to="/bills">Bills</NavLink></li>
-                <li><NavLink to="/statuses">Statuses</NavLink></li>
-                <li><NavLink to="/bankaccounts">Bank Accounts</NavLink></li>
-                <li><NavLink to="/categories">Categories</NavLink></li>
-                <li><NavLink to="/recurrences">Recurrences</NavLink></li>
+                <li><NavLink to="/bills" className={({ isActive }) => isActive ? 'active' : ''}>Bills</NavLink></li>
+                <li><NavLink to="/statuses" className={({ isActive }) => isActive ? 'active' : ''}>Statuses</NavLink></li>
+                <li><NavLink to="/bankaccounts" className={({ isActive }) => isActive ? 'active' : ''}>Bank Accounts</NavLink></li>
+                <li><NavLink to="/categories" className={({ isActive }) => isActive ? 'active' : ''}>Categories</NavLink></li>
+                <li><NavLink to="/recurrences" className={({ isActive }) => isActive ? 'active' : ''}>Recurrences</NavLink></li>
               </ul>
             )}
           </div>

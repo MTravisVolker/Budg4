@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { DueBill, BankAccountInstance, BankAccount, Bill, Status, Recurrence, Category } from '../types';
+import { parseApiError } from '../utils/apiError';
 
 function calculateDefaultDateRange(bankInstances: BankAccountInstance[]): { start: string; end: string } {
   const today = new Date();
@@ -86,10 +87,11 @@ export default function useMainPageData(token: string) {
         }
       })
       .catch((error) => {
-        if (axios.isAxiosError(error) && error.response?.status === 401) {
-          // Let the axios interceptor handle the session expiration
-          setError('Your session has expired. Please log in again.');
-          // Clear any stored data
+        const parsed = parseApiError(error);
+        if (parsed.message) {
+          setError(parsed.message);
+        } else {
+          setError(null);
           setDueBills([]);
           setBankInstances([]);
           setAccounts([]);
@@ -97,8 +99,6 @@ export default function useMainPageData(token: string) {
           setStatuses([]);
           setRecurrences([]);
           setCategories([]);
-        } else {
-          setError('Failed to fetch data');
         }
         setLoading(false);
       });

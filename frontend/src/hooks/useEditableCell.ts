@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { parseApiError } from '../utils/apiError';
+import { useToast } from '../components/ToastProvider';
 
 export default function useEditableCell(onSave: (editingCell: any) => Promise<void>) {
+  const showToast = useToast();
   const [editingCell, setEditingCell] = useState<{
     rowId: number;
     type: 'DueBill' | 'BankAccountInstance';
@@ -41,8 +44,10 @@ export default function useEditableCell(onSave: (editingCell: any) => Promise<vo
     try {
       await onSave(editingCell);
       setEditingCell(null);
-    } catch {
-      // Optionally handle error
+    } catch (error) {
+      const { message } = parseApiError(error);
+      if (message) showToast(message);
+      setEditingCell(null);
     } finally {
       setSavingEdit(false);
     }

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError, type ApiFieldErrors } from './utils/apiError';
+import { useToast } from './components/ToastProvider';
+import FieldHint from './components/FieldHint';
 
 // Bank Accounts management page for Budg SPA
 
@@ -15,6 +18,7 @@ interface BankAccountsPageProps {
 }
 
 const BankAccountsPage = ({ token }: BankAccountsPageProps) => {
+  const showToast = useToast();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,11 +26,13 @@ const BankAccountsPage = ({ token }: BankAccountsPageProps) => {
   const [editAccount, setEditAccount] = useState<BankAccount | null>(null);
   const [form, setForm] = useState({ name: '', font_color: '', url: '' });
   const [formError, setFormError] = useState<string | null>(null);
+  const [formFieldErrors, setFormFieldErrors] = useState<ApiFieldErrors>({});
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     axios.get('/api/bankaccounts/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -34,18 +40,20 @@ const BankAccountsPage = ({ token }: BankAccountsPageProps) => {
         setAccounts(res.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch bank accounts');
+      .catch((error) => {
+        setError(parseApiError(error).message);
         setLoading(false);
       });
   }, [token]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setFormFieldErrors(errors => ({ ...errors, [e.target.name]: '' }));
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setFormFieldErrors({});
     setFormLoading(true);
     const req = editAccount
       ? axios.put(`/api/bankaccounts/${editAccount.id}/`, form, { headers: { Authorization: `Bearer ${token}` } })
@@ -56,15 +64,21 @@ const BankAccountsPage = ({ token }: BankAccountsPageProps) => {
       setForm({ name: '', font_color: '', url: '' });
       setFormLoading(false);
       setLoading(true);
+      setError(null);
       axios.get('/api/bankaccounts/', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => {
           setAccounts(res.data);
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch((error) => {
+          setError(parseApiError(error).message);
+          setLoading(false);
+        });
     })
-      .catch(() => {
-        setFormError('Failed to save bank account');
+      .catch((error) => {
+        const parsed = parseApiError(error);
+        setFormFieldErrors(parsed.fieldErrors);
+        if (parsed.message) setFormError(parsed.message);
         setFormLoading(false);
       });
   };
@@ -81,8 +95,9 @@ const BankAccountsPage = ({ token }: BankAccountsPageProps) => {
         setAccounts(accounts.filter(a => a.id !== id));
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to delete bank account');
+      .catch((error) => {
+        const { message } = parseApiError(error);
+        if (message) showToast(message);
         setLoading(false);
       });
   };
@@ -146,7 +161,8 @@ const BankAccountsPage = ({ token }: BankAccountsPageProps) => {
                 <label className="label">
                   <span className="label-text">Name</span>
                 </label>
-                <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+                <input name="name" value={form.name} onChange={handleFormChange} required className={withInputError(formFieldErrors, 'name')} />
+                <FieldHint message={formFieldErrors.name} />
               </div>
               <div className="form-control">
                 <label className="label">
@@ -158,7 +174,8 @@ const BankAccountsPage = ({ token }: BankAccountsPageProps) => {
                 <label className="label">
                   <span className="label-text">URL</span>
                 </label>
-                <input name="url" value={form.url} onChange={handleFormChange} className="input input-bordered" />
+                <input name="url" value={form.url} onChange={handleFormChange} className={withInputError(formFieldErrors, 'url')} />
+                <FieldHint message={formFieldErrors.url} />
               </div>
               <div className="flex gap-2 mt-2">
                 <button type="submit" disabled={formLoading} className="btn btn-primary w-full">Save</button>

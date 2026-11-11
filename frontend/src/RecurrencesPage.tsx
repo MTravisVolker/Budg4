@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError, type ApiFieldErrors } from './utils/apiError';
+import { useToast } from './components/ToastProvider';
+import FieldHint from './components/FieldHint';
 
 // Recurrences management page for Budg SPA
 
@@ -14,6 +17,7 @@ interface RecurrencesPageProps {
 }
 
 const RecurrencesPage = ({ token }: RecurrencesPageProps) => {
+  const showToast = useToast();
   const [recurrences, setRecurrences] = useState<Recurrence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,11 +25,13 @@ const RecurrencesPage = ({ token }: RecurrencesPageProps) => {
   const [editRecurrence, setEditRecurrence] = useState<Recurrence | null>(null);
   const [form, setForm] = useState({ name: '', interval: '' });
   const [formError, setFormError] = useState<string | null>(null);
+  const [formFieldErrors, setFormFieldErrors] = useState<ApiFieldErrors>({});
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     axios.get('/api/recurrences/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -33,18 +39,20 @@ const RecurrencesPage = ({ token }: RecurrencesPageProps) => {
         setRecurrences(res.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch recurrences');
+      .catch((error) => {
+        setError(parseApiError(error).message);
         setLoading(false);
       });
   }, [token]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setFormFieldErrors(errors => ({ ...errors, [e.target.name]: '' }));
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setFormFieldErrors({});
     setFormLoading(true);
     const req = editRecurrence
       ? axios.put(`/api/recurrences/${editRecurrence.id}/`, form, { headers: { Authorization: `Bearer ${token}` } })
@@ -55,15 +63,21 @@ const RecurrencesPage = ({ token }: RecurrencesPageProps) => {
       setForm({ name: '', interval: '' });
       setFormLoading(false);
       setLoading(true);
+      setError(null);
       axios.get('/api/recurrences/', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => {
           setRecurrences(res.data);
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch((error) => {
+          setError(parseApiError(error).message);
+          setLoading(false);
+        });
     })
-      .catch(() => {
-        setFormError('Failed to save recurrence');
+      .catch((error) => {
+        const parsed = parseApiError(error);
+        setFormFieldErrors(parsed.fieldErrors);
+        if (parsed.message) setFormError(parsed.message);
         setFormLoading(false);
       });
   };
@@ -80,8 +94,9 @@ const RecurrencesPage = ({ token }: RecurrencesPageProps) => {
         setRecurrences(recurrences.filter(r => r.id !== id));
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to delete recurrence');
+      .catch((error) => {
+        const { message } = parseApiError(error);
+        if (message) showToast(message);
         setLoading(false);
       });
   };
@@ -135,13 +150,15 @@ const RecurrencesPage = ({ token }: RecurrencesPageProps) => {
                 <label className="label">
                   <span className="label-text">Name</span>
                 </label>
-                <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+                <input name="name" value={form.name} onChange={handleFormChange} required className={withInputError(formFieldErrors, 'name')} />
+                <FieldHint message={formFieldErrors.name} />
               </div>
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Interval</span>
                 </label>
-                <input name="interval" value={form.interval} onChange={handleFormChange} className="input input-bordered" />
+                <input name="interval" value={form.interval} onChange={handleFormChange} className={withInputError(formFieldErrors, 'interval')} />
+                <FieldHint message={formFieldErrors.interval} />
               </div>
               <div className="flex gap-2 mt-2">
                 <button type="submit" disabled={formLoading} className="btn btn-primary w-full">{editRecurrence ? 'Save' : 'Add'}</button>

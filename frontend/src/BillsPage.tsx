@@ -5,19 +5,9 @@ import useBills from './hooks/useBills';
 import useBankAccounts from './hooks/useBankAccounts';
 import useCategories from './hooks/useCategories';
 import useRecurrences from './hooks/useRecurrences';
+import { Bill } from './types';
 
 // Bills management page for Budg SPA
-
-interface Bill {
-  id: number;
-  name: string;
-  default_amount_due: string;
-  url: string;
-  draft_account: number;
-  category: number;
-  recurrence: number;
-  priority: number;
-}
 
 interface BillsPageProps {
   token: string;
@@ -25,9 +15,10 @@ interface BillsPageProps {
 
 const BillsPage = ({ token }: BillsPageProps) => {
   const { bills, loading, error, refresh: refreshBills } = useBills(token);
-  const { accounts } = useBankAccounts(token);
-  const { categories } = useCategories(token);
-  const { recurrences } = useRecurrences(token);
+  const { accounts, error: accountsError } = useBankAccounts(token);
+  const { categories, error: categoriesError } = useCategories(token);
+  const { recurrences, error: recurrencesError } = useRecurrences(token);
+  const relatedError = accountsError || categoriesError || recurrencesError;
   const [showAddModal, setShowAddModal] = useState(false);
   const [editBill, setEditBill] = useState<Bill | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,6 +36,7 @@ const BillsPage = ({ token }: BillsPageProps) => {
       </div>
       {loading && <div className="flex justify-center"><span className="loading loading-spinner loading-lg"></span></div>}
       {error && <div className="alert alert-error mb-4">{error}</div>}
+      {!error && relatedError && <div className="alert alert-error mb-4">{relatedError}</div>}
       {!loading && !error && (
         <div className="overflow-x-auto rounded-lg shadow">
           <table className="table table-zebra w-full">
@@ -106,7 +98,17 @@ const BillsPage = ({ token }: BillsPageProps) => {
             setEditBill(null);
           }}
           token={token}
-          bill={editBill}
+          bill={{
+            id: editBill.id,
+            name: editBill.name,
+            default_amount_due: parseFloat(editBill.default_amount_due),
+            total_balance: editBill.total_balance ? parseFloat(editBill.total_balance) : undefined,
+            url: editBill.url,
+            draft_account: editBill.draft_account === null ? undefined : editBill.draft_account,
+            category: editBill.category === null ? undefined : editBill.category,
+            recurrence: editBill.recurrence === null ? undefined : editBill.recurrence,
+            priority: editBill.priority
+          }}
           accounts={accounts}
           categories={categories}
           recurrences={recurrences}

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError, type ApiFieldErrors } from './utils/apiError';
+import { useToast } from './components/ToastProvider';
+import FieldHint from './components/FieldHint';
 
 // Statuses management page for Budg SPA
 
@@ -14,6 +17,7 @@ interface StatusesPageProps {
 }
 
 const StatusesPage = ({ token }: StatusesPageProps) => {
+  const showToast = useToast();
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -21,11 +25,13 @@ const StatusesPage = ({ token }: StatusesPageProps) => {
   const [editStatus, setEditStatus] = useState<Status | null>(null);
   const [statusForm, setStatusForm] = useState({ name: '', highlight_color: '' });
   const [statusFormError, setStatusFormError] = useState<string | null>(null);
+  const [statusFieldErrors, setStatusFieldErrors] = useState<ApiFieldErrors>({});
   const [statusFormLoading, setStatusFormLoading] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     setStatusLoading(true);
+    setStatusError(null);
     axios.get('/api/statuses/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -33,18 +39,20 @@ const StatusesPage = ({ token }: StatusesPageProps) => {
         setStatuses(res.data);
         setStatusLoading(false);
       })
-      .catch(() => {
-        setStatusError('Failed to fetch statuses');
+      .catch((error) => {
+        setStatusError(parseApiError(error).message);
         setStatusLoading(false);
       });
   }, [token]);
 
   const handleStatusFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStatusForm({ ...statusForm, [e.target.name]: e.target.value });
+    setStatusFieldErrors(errors => ({ ...errors, [e.target.name]: '' }));
   };
   const handleStatusSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setStatusFormError(null);
+    setStatusFieldErrors({});
     setStatusFormLoading(true);
     const req = editStatus
       ? axios.put(`/api/statuses/${editStatus.id}/`, statusForm, { headers: { Authorization: `Bearer ${token}` } })
@@ -55,15 +63,21 @@ const StatusesPage = ({ token }: StatusesPageProps) => {
       setStatusForm({ name: '', highlight_color: '' });
       setStatusFormLoading(false);
       setStatusLoading(true);
+      setStatusError(null);
       axios.get('/api/statuses/', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => {
           setStatuses(res.data);
           setStatusLoading(false);
         })
-        .catch(() => setStatusLoading(false));
+        .catch((error) => {
+          setStatusError(parseApiError(error).message);
+          setStatusLoading(false);
+        });
     })
-      .catch(() => {
-        setStatusFormError('Failed to save status');
+      .catch((error) => {
+        const parsed = parseApiError(error);
+        setStatusFieldErrors(parsed.fieldErrors);
+        if (parsed.message) setStatusFormError(parsed.message);
         setStatusFormLoading(false);
       });
   };
@@ -80,8 +94,9 @@ const StatusesPage = ({ token }: StatusesPageProps) => {
         setStatuses(statuses.filter(s => s.id !== id));
         setStatusLoading(false);
       })
-      .catch(() => {
-        setStatusError('Failed to delete status');
+      .catch((error) => {
+        const { message } = parseApiError(error);
+        if (message) showToast(message);
         setStatusLoading(false);
       });
   };
@@ -135,7 +150,8 @@ const StatusesPage = ({ token }: StatusesPageProps) => {
                 <label className="label">
                   <span className="label-text">Name</span>
                 </label>
-                <input name="name" value={statusForm.name} onChange={handleStatusFormChange} required className="input input-bordered" />
+                <input name="name" value={statusForm.name} onChange={handleStatusFormChange} required className={withInputError(statusFieldErrors, 'name')} />
+                <FieldHint message={statusFieldErrors.name} />
               </div>
               <div className="form-control">
                 <label className="label">
@@ -156,9 +172,10 @@ const StatusesPage = ({ token }: StatusesPageProps) => {
                     value={statusForm.highlight_color}
                     onChange={handleStatusFormChange}
                     placeholder="#000000"
-                    className="input input-bordered w-32"
+                    className={`${withInputError(statusFieldErrors, 'highlight_color')} w-32`}
                     maxLength={20}
                   />
+                  <FieldHint message={statusFieldErrors.highlight_color} />
                 </div>
               </div>
               <div className="flex gap-2 mt-2">
