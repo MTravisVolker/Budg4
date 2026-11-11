@@ -2,15 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import useAddDueBillModal from '../useAddDueBillModal';
 import axios from 'axios';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 
 vi.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios = axios as unknown as ReturnType<typeof vi.fn>;
 
 describe('useAddDueBillModal', () => {
   const mockToken = 'test-token';
   const mockBills = [
-    { id: 1, name: 'Bill 1', recurrence: 1, default_amount_due: 10, total_balance: 100, draft_account: 1, priority: 1 },
-    { id: 2, name: 'Bill 2', recurrence: 2, default_amount_due: 20, total_balance: 200, draft_account: 2, priority: 2 }
+    { id: 1, name: 'Bill 1', recurrence: 1, default_amount_due: 10, total_balance: 100, draft_account: 1, priority: 1, url: '/api/bills/1', category: 1 },
+    { id: 2, name: 'Bill 2', recurrence: 2, default_amount_due: 20, total_balance: 200, draft_account: 2, priority: 2, url: '/api/bills/2', category: 2 }
   ];
   const mockRefresh = vi.fn();
 
@@ -40,6 +41,27 @@ describe('useAddDueBillModal', () => {
       result.current.handleAddDueBillChange({ target: { name: 'amount_due', value: '123.45' } } as any);
     });
     expect(result.current.addDueBillForm.amount_due).toBe('123.45');
+  });
+
+  it('copies a due date into a blank pay date', () => {
+    const { result } = renderHook(() => useAddDueBillModal(mockToken, mockBills, mockRefresh));
+    act(() => {
+      result.current.handleAddDueBillChange({ target: { name: 'due_date', value: '2024-03-20' } } as any);
+    });
+    expect(result.current.addDueBillForm.due_date).toBe('2024-03-20');
+    expect(result.current.addDueBillForm.pay_date).toBe('2024-03-20');
+  });
+
+  it('leaves an existing pay date unchanged when the due date changes', () => {
+    const { result } = renderHook(() => useAddDueBillModal(mockToken, mockBills, mockRefresh));
+    act(() => {
+      result.current.handleAddDueBillChange({ target: { name: 'pay_date', value: '2024-03-15' } } as any);
+    });
+    act(() => {
+      result.current.handleAddDueBillChange({ target: { name: 'due_date', value: '2024-03-20' } } as any);
+    });
+    expect(result.current.addDueBillForm.due_date).toBe('2024-03-20');
+    expect(result.current.addDueBillForm.pay_date).toBe('2024-03-15');
   });
 
   it('updates form state when bill is selected', () => {
@@ -152,7 +174,7 @@ describe('useAddDueBillModal', () => {
       result.current.handleAddDueBill({ preventDefault: () => {} } as any);
       await new Promise(resolve => setTimeout(resolve, 0));
     });
-    expect(result.current.addDueBillError).toBe('Failed to add due bill');
+    expect(result.current.addDueBillError).toBe(GENERIC_API_ERROR);
     expect(result.current.addDueBillLoading).toBe(false);
   });
 }); 
