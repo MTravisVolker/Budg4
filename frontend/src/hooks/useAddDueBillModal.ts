@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { addDueBill } from '../api/dueBillApi';
 import { Bill } from '../types';
+import { parseApiError } from '../utils/apiError';
 
 export default function useAddDueBillModal(token: string, bills: Bill[], refresh: () => void) {
   const [showAddDueBill, setShowAddDueBill] = useState(false);
@@ -22,6 +23,12 @@ export default function useAddDueBillModal(token: string, bills: Bill[], refresh
         total_balance: selectedBill?.total_balance ? selectedBill.total_balance.toString() : '0',
         draft_account: selectedBill?.draft_account ? selectedBill.draft_account.toString() : '',
         priority: selectedBill?.priority ? selectedBill.priority.toString() : '0',
+      }));
+    } else if (name === 'due_date') {
+      setAddDueBillForm(form => ({
+        ...form,
+        due_date: value,
+        pay_date: form.pay_date.trim() === '' ? value : form.pay_date,
       }));
     } else {
       setAddDueBillForm(form => ({ ...form, [name]: value }));
@@ -79,8 +86,9 @@ export default function useAddDueBillModal(token: string, bills: Bill[], refresh
         setAddDueBillLoading(false);
         refresh();
       })
-      .catch(() => {
-        setAddDueBillError('Failed to add due bill');
+      .catch((error) => {
+        const { message } = parseApiError(error);
+        if (message) setAddDueBillError(message);
         setAddDueBillLoading(false);
       });
   };
