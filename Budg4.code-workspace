@@ -4,5 +4,21 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"debug.javascript.autoAttachFilter": "smart"
+	},
+	"launch": {
+		"configurations": [
+			{
+				"type": "chrome",
+				"name": "Launch Chrome against localhost",
+				"request": "launch",
+				"url": "http://localhost:5173",
+				"webRoot": "${workspaceFolder}/frontend",
+				"sourceMapPathOverrides": {
+					"/*": "${webRoot}/*"
+				}
+			}
+		]
+	}
 }

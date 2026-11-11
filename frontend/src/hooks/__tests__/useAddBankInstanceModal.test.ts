@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import useAddBankInstanceModal from '../useAddBankInstanceModal';
 import * as dueBillApi from '../../api/dueBillApi';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 
 vi.mock('../../api/dueBillApi', () => ({
   addBankAccountInstance: vi.fn(),
@@ -102,7 +103,7 @@ describe('useAddBankInstanceModal', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
 
-    expect(result.current.addBankInstanceError).toBe('Failed to add bank account instance');
+    expect(result.current.addBankInstanceError).toBe(GENERIC_API_ERROR);
     expect(result.current.addBankInstanceLoading).toBe(false);
   });
 }); 

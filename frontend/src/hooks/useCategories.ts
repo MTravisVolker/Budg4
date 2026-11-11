@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { parseApiError } from '../utils/apiError';
 
 export interface Category {
   id: number;
@@ -14,6 +15,7 @@ export default function useCategories(token: string) {
   const fetchCategories = useCallback(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     axios.get('/api/categories/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -21,8 +23,8 @@ export default function useCategories(token: string) {
         setCategories(res.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch categories');
+      .catch((error) => {
+        setError(parseApiError(error).message);
         setLoading(false);
       });
   }, [token]);

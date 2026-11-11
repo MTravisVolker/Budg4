@@ -51,4 +51,10 @@ export interface Recurrence {
   id: number;
   name: string;
   calculation?: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  url?: string;
 } 

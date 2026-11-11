@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError, type ApiFieldErrors } from '../utils/apiError';
+import FieldHint from './FieldHint';
 
 interface AddBankAccountModalProps {
   show: boolean;
@@ -11,16 +13,19 @@ interface AddBankAccountModalProps {
 const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ show, onClose, token, onAdded }) => {
   const [form, setForm] = useState({ name: '', font_color: '' });
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<ApiFieldErrors>({});
   const [formLoading, setFormLoading] = useState(false);
 
   if (!show) return null;
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setFieldErrors(errors => ({ ...errors, [e.target.name]: '' }));
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setFieldErrors({});
     setFormLoading(true);
     axios.post('/api/bankaccounts/', form, { headers: { Authorization: `Bearer ${token}` } })
       .then(() => {
@@ -29,8 +34,10 @@ const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ show, onClose
         onClose();
         onAdded && onAdded();
       })
-      .catch(() => {
-        setFormError('Failed to add bank account');
+      .catch((error) => {
+        const parsed = parseApiError(error);
+        setFieldErrors(parsed.fieldErrors);
+        if (parsed.message) setFormError(parsed.message);
         setFormLoading(false);
       });
   };
@@ -50,7 +57,8 @@ const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ show, onClose
             <label className="label" htmlFor="bank-account-name">
               <span className="label-text">Name</span>
             </label>
-            <input id="bank-account-name" name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+            <input id="bank-account-name" name="name" value={form.name} onChange={handleFormChange} required className={withInputError(fieldErrors, 'name')} />
+            <FieldHint message={fieldErrors.name} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="bank-account-font-color-text">

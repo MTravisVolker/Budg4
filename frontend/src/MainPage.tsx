@@ -1,13 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { DateRange, Range, RangeKeyDict } from 'react-date-range';
-import { useNavigate } from 'react-router-dom';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import useMainPageData from './hooks/useMainPageData';
 import useEditableCell from './hooks/useEditableCell';
 import MainTableBody from './components/MainTableBody';
 import { editDueBill, editBankAccountInstance, deleteDueBill, deleteBankAccountInstance } from './api/dueBillApi';
-import { DueBill, BankAccountInstance, BankAccount, Bill, Status } from './types';
 import RenderAddDueBillModal from './components/RenderAddDueBillModal';
 import RenderAddBankInstanceModal from './components/RenderAddBankInstanceModal';
 import RenderAddBillModal from './components/RenderAddBillModal';
@@ -15,6 +14,9 @@ import RenderAddBankAccountModal from './components/RenderAddBankAccountModal';
 import RenderAddStatusModal from './components/RenderAddStatusModal';
 import RenderAddRecurrenceModal from './components/RenderAddRecurrenceModal';
 import RenderAddCategoryModal from './components/RenderAddCategoryModal';
+import { useToast } from './components/ToastProvider';
+import { parseMoneyOrZero } from './utils/format';
+import { parseApiError, type ApiFieldErrors } from './utils/apiError';
 
 interface MainPageProps {
   token: string;
@@ -43,69 +45,14 @@ export type AddDueBillForm = {
   priority: string;
 };
 
-// Utility function to prepare and sort all rows for the main table
-function getAllRowsRaw(
-  dueBills: DueBill[],
-  bankInstances: BankAccountInstance[],
-  accounts: BankAccount[],
-  bills: Bill[],
-  statuses: Status[]
-) {
-  const allRowsRaw = [
-    ...dueBills.map(row => ({
-      ...row,
-      type: 'DueBill' as const,
-      name: bills.find(b => b.id === row.bill)?.name || 'Unknown',
-      statusObj: statuses.find(s => s.id === row.status),
-      accountObj: accounts.find(a => a.id === row.draft_account),
-      accountId: row.draft_account,
-    })),
-    ...bankInstances.map(row => ({
-      ...row,
-      type: 'BankAccountInstance' as const,
-      name: accounts.find(a => a.id === row.bank_account)?.name || 'Unknown',
-      statusObj: statuses.find(s => s.id === row.status),
-      accountObj: accounts.find(a => a.id === row.bank_account),
-      accountId: row.bank_account,
-      priority: 0,
-    })),
-  ];
-
-  // Sort globally by payDate, Account, Priority, DueDate
-  allRowsRaw.sort((a, b) => {
-    // payDate
-    const aPay = a.pay_date || '';
-    const bPay = b.pay_date || '';
-    if (aPay !== bPay) return aPay.localeCompare(bPay);
-    // Account (by name)
-    const aName = a.accountObj?.name || '';
-    const bName = b.accountObj?.name || '';
-    if (aName !== bName) return aName.localeCompare(bName);
-    // Priority (DueBill only, fallback 0)
-    const aPriority = (a.type === 'DueBill' ? a.priority : 0);
-    const bPriority = (b.type === 'DueBill' ? b.priority : 0);
-    if (aPriority !== bPriority) return aPriority - bPriority;
-    // DueDate
-    const aDue = a.due_date || '';
-    const bDue = b.due_date || '';
-    return aDue.localeCompare(bDue);
-  });
-
-  return allRowsRaw;
-}
-
 const MainPage = ({ token }: MainPageProps) => {
-  const navigate = useNavigate();
   // Fetch all main data and provide refresh, loading, error
   const {
     dueBills, bankInstances, accounts, bills, statuses, recurrences, categories, loading, error, refresh, dateRange, setDateRange
   } = useMainPageData(token);
+  const showToast = useToast();
 
   // Local state for add modals and forms
-  const [addDueBillError, setAddDueBillError] = useState<string | null>(null);
-  const [addDueBillLoading, setAddDueBillLoading] = useState(false);
-  const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
-  const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [dateRangeState, setDateRangeState] = useState<Range[]>([
     {
@@ -127,7 +74,7 @@ const MainPage = ({ token }: MainPageProps) => {
 
   // Form states for each modal
   const [addDueBillForm, setAddDueBillForm] = useState<AddDueBillForm>({
-    bill: '', recurrence: '', amount_due: '', total_balance: '0', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
+    bill: '', recurrence: '', amount_due: '', total_balance: '0.00', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0',
   });
   type AddBankInstanceForm = {
     bank_account: string;
@@ -143,6 +90,12 @@ const MainPage = ({ token }: MainPageProps) => {
   const [addBillForm, setAddBillForm] = useState<AddBillForm>({
     name: '', default_amount_due: '', url: '', draft_account: '', category: '', recurrence: '', priority: '0',
   });
+  const [addDueBillError, setAddDueBillError] = useState<string | null>(null);
+  const [addDueBillFieldErrors, setAddDueBillFieldErrors] = useState<ApiFieldErrors>({});
+  const [addDueBillLoading, setAddDueBillLoading] = useState(false);
+  const [addBankInstanceError, setAddBankInstanceError] = useState<string | null>(null);
+  const [addBankInstanceFieldErrors, setAddBankInstanceFieldErrors] = useState<ApiFieldErrors>({});
+  const [addBankInstanceLoading, setAddBankInstanceLoading] = useState(false);
 
   const dateRangeRef = useRef<HTMLDivElement>(null);
 
@@ -213,9 +166,6 @@ const MainPage = ({ token }: MainPageProps) => {
     await refresh();
   });
 
-  // Prepare globally sorted rows and insert subtotal rows after each account's last record
-  const allRowsRaw = getAllRowsRaw(dueBills, bankInstances, accounts, bills, statuses);
-
   // Delete row handler
   const handleDeleteRow = async (type: 'DueBill' | 'BankAccountInstance', id: number) => {
     if (!window.confirm('Are you sure you want to delete this row?')) return;
@@ -226,8 +176,9 @@ const MainPage = ({ token }: MainPageProps) => {
         await deleteBankAccountInstance(id, token);
       }
       await refresh();
-    } catch {
-      alert('Failed to delete row.');
+    } catch (error) {
+      const { message } = parseApiError(error);
+      if (message) showToast(message);
     }
   };
 
@@ -246,13 +197,21 @@ const MainPage = ({ token }: MainPageProps) => {
   // Helper to close a modal and pop from stack
   const closeModal = (modal: string) => {
     setModalStack(stack => stack.slice(0, -1));
-    if (modal === 'AddDueBill') setShowAddDueBillModal(false);
+    if (modal === 'AddDueBill') {
+      setShowAddDueBillModal(false);
+      setAddDueBillError(null);
+      setAddDueBillFieldErrors({});
+    }
     if (modal === 'AddBill') setShowAddBillModal(false);
     if (modal === 'AddBankAccount') setShowAddAccountModal(false);
     if (modal === 'AddStatus') setShowAddStatusModal(false);
     if (modal === 'AddRecurrence') setShowAddRecurrenceModal(false);
     if (modal === 'AddCategory') setShowAddCategoryModal(false);
-    if (modal === 'AddBankInstance') setShowAddBankInstanceModal(false);
+    if (modal === 'AddBankInstance') {
+      setShowAddBankInstanceModal(false);
+      setAddBankInstanceError(null);
+      setAddBankInstanceFieldErrors({});
+    }
   };
 
   // Handler to open "add new" from any modal
@@ -311,6 +270,12 @@ const MainPage = ({ token }: MainPageProps) => {
         draft_account: selectedBill?.draft_account ? selectedBill.draft_account.toString() : '',
         priority: selectedBill?.priority ? selectedBill.priority.toString() : '0',
       }));
+    } else if (name === 'due_date') {
+      setAddDueBillForm(form => ({
+        ...form,
+        due_date: value,
+        pay_date: form.pay_date.trim() === '' ? value : form.pay_date,
+      }));
     } else {
       setAddDueBillForm(form => ({ ...form, [name]: value }));
     }
@@ -319,25 +284,26 @@ const MainPage = ({ token }: MainPageProps) => {
   const handleAddDueBill = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddDueBillError(null);
-    setAddDueBillLoading(true);
-    if (!addDueBillForm.bill || !addDueBillForm.amount_due || !addDueBillForm.due_date) {
-      setAddDueBillError('Bill, Amount Due, and Due Date are required');
-      setAddDueBillLoading(false);
-      return;
-    }
+    setAddDueBillFieldErrors({});
+    const clientErrors: ApiFieldErrors = {};
+    if (!addDueBillForm.bill) clientErrors.bill = 'Bill is required';
+    if (!addDueBillForm.amount_due) clientErrors.amount_due = 'Amount Due is required';
+    if (!addDueBillForm.due_date) clientErrors.due_date = 'Due Date is required';
     const priorityValue = addDueBillForm.priority ? parseInt(addDueBillForm.priority) : 0;
-    if (priorityValue < 1) {
-      setAddDueBillError('Priority must be at least 1');
-      setAddDueBillLoading(false);
+    if (priorityValue < 1) clientErrors.priority = 'Priority must be at least 1';
+    if (Object.keys(clientErrors).length > 0) {
+      setAddDueBillFieldErrors(clientErrors);
+      setAddDueBillError('Please fix the errors in the form');
       return;
     }
+    setAddDueBillLoading(true);
     try {
       const { addDueBill } = await import('./api/dueBillApi');
       await addDueBill({
         bill: parseInt(addDueBillForm.bill),
         recurrence: addDueBillForm.recurrence ? parseInt(addDueBillForm.recurrence) : null,
         amount_due: parseFloat(addDueBillForm.amount_due),
-        total_balance: parseFloat(addDueBillForm.total_balance),
+        total_balance: parseMoneyOrZero(addDueBillForm.total_balance),
         draft_account: addDueBillForm.draft_account ? parseInt(addDueBillForm.draft_account) : null,
         due_date: addDueBillForm.due_date,
         pay_date: addDueBillForm.pay_date || null,
@@ -346,10 +312,12 @@ const MainPage = ({ token }: MainPageProps) => {
       }, token);
       
       setShowAddDueBillModal(false);
-      setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', total_balance: '', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
+      setAddDueBillForm({ bill: '', recurrence: '', amount_due: '', total_balance: '0.00', draft_account: '', due_date: '', pay_date: '', status: '', priority: '0' });
       await refresh();
     } catch (error) {
-      setAddDueBillError('Failed to add due bill');
+      const parsed = parseApiError(error);
+      setAddDueBillFieldErrors(parsed.fieldErrors);
+      if (parsed.message) setAddDueBillError(parsed.message);
     } finally {
       setAddDueBillLoading(false);
     }
@@ -367,12 +335,17 @@ const MainPage = ({ token }: MainPageProps) => {
   const handleAddBankInstance = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddBankInstanceError(null);
-    setAddBankInstanceLoading(true);
-    if (!addBankInstanceForm.bank_account || !addBankInstanceForm.balance || !addBankInstanceForm.due_date) {
-      setAddBankInstanceError('Bank Account, Balance, and Due Date are required');
-      setAddBankInstanceLoading(false);
+    setAddBankInstanceFieldErrors({});
+    const clientErrors: ApiFieldErrors = {};
+    if (!addBankInstanceForm.bank_account) clientErrors.bank_account = 'Bank Account is required';
+    if (!addBankInstanceForm.balance) clientErrors.balance = 'Balance is required';
+    if (!addBankInstanceForm.due_date) clientErrors.due_date = 'Due Date is required';
+    if (Object.keys(clientErrors).length > 0) {
+      setAddBankInstanceFieldErrors(clientErrors);
+      setAddBankInstanceError('Please fix the errors in the form');
       return;
     }
+    setAddBankInstanceLoading(true);
     try {
       const { addBankAccountInstance } = await import('./api/dueBillApi');
       await addBankAccountInstance({
@@ -391,7 +364,9 @@ const MainPage = ({ token }: MainPageProps) => {
       setAddBankInstanceForm({ bank_account: '', balance: '', due_date: '', pay_date: '', status: '', priority: '0' });
       await refresh();
     } catch (error) {
-      setAddBankInstanceError('Failed to add bank account instance');
+      const parsed = parseApiError(error);
+      setAddBankInstanceFieldErrors(parsed.fieldErrors);
+      if (parsed.message) setAddBankInstanceError(parsed.message);
     } finally {
       setAddBankInstanceLoading(false);
     }
@@ -463,6 +438,7 @@ const MainPage = ({ token }: MainPageProps) => {
         onChange={handleAddDueBillChange}
         form={addDueBillForm}
         error={addDueBillError}
+        fieldErrors={addDueBillFieldErrors}
         loading={addDueBillLoading}
         bills={bills}
         recurrences={recurrences}
@@ -480,6 +456,7 @@ const MainPage = ({ token }: MainPageProps) => {
         onChange={handleAddBankInstanceChange}
         form={addBankInstanceForm}
         error={addBankInstanceError}
+        fieldErrors={addBankInstanceFieldErrors}
         loading={addBankInstanceLoading}
         accounts={accounts}
         statuses={statuses}
@@ -523,21 +500,9 @@ const MainPage = ({ token }: MainPageProps) => {
         onAdded={() => handleAddedNewItem('category', categories.length > 0 ? Math.max(...categories.map(c => c.id)) : 0)}
       />
       {/* End Modals */}
+      {error && <div className="alert alert-error mb-4">{error}</div>}
       {loading && <div className="flex justify-center"><span className="loading loading-spinner loading-lg"></span></div>}
-      {error && (
-        <div className="alert alert-error mb-4">
-          {error}
-          {error.includes('session has expired') && (
-            <button 
-              className="btn btn-sm btn-error ml-2"
-              onClick={() => navigate('/')}
-            >
-              Go to Login
-            </button>
-          )}
-        </div>
-      )}
-      {!loading && !error && (
+      {!loading && (
         <div className="overflow-x-auto rounded-lg shadow">
           <table className="table table-zebra w-full">
             <thead>
@@ -556,7 +521,6 @@ const MainPage = ({ token }: MainPageProps) => {
             </thead>
             <tbody>
               <MainTableBody
-                allRowsRaw={allRowsRaw}
                 dueBills={dueBills}
                 bankInstances={bankInstances}
                 accounts={accounts}
@@ -569,6 +533,9 @@ const MainPage = ({ token }: MainPageProps) => {
                 handleEditInputBlur={handleEditInputBlur}
                 handleEditInputKeyDown={handleEditInputKeyDown}
                 onDelete={handleDeleteRow}
+                onAddBill={() => handleAddNewFromModal('AddBill', 'bill', addBillForm)}
+                onAddAccount={() => handleAddNewFromModal('AddBankAccount', 'account', addBankInstanceForm)}
+                onAddStatus={() => handleAddNewFromModal('AddStatus', 'status', addBankInstanceForm)}
               />
             </tbody>
           </table>

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddRecurrenceModal from '../AddRecurrenceModal';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 import axios from 'axios';
 import { act, waitFor } from '@testing-library/react';
 
@@ -80,7 +81,7 @@ describe('AddRecurrenceModal', () => {
       await userEvent.click(submitButton);
     });
     
-    expect(await screen.findByText('Failed to add recurrence')).toBeInTheDocument();
+    expect(await screen.findByText(GENERIC_API_ERROR)).toBeInTheDocument();
   });
 
   it('resets form after successful submission', async () => {

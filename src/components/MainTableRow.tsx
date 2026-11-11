@@ -1,0 +1,3 @@
+import { Bill, BankAccount, Status } from '../types';
+
+// ... rest of the file ... 

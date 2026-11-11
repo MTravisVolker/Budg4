@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { addBankAccountInstance } from '../api/dueBillApi';
+import { parseApiError } from '../utils/apiError';
 
 export default function useAddBankInstanceModal(token: string, refresh: () => void) {
   const [showAddBankInstance, setShowAddBankInstance] = useState(false);
@@ -44,8 +45,9 @@ export default function useAddBankInstanceModal(token: string, refresh: () => vo
         setAddBankInstanceLoading(false);
         refresh();
       })
-      .catch(() => {
-        setAddBankInstanceError('Failed to add bank account instance');
+      .catch((error) => {
+        const { message } = parseApiError(error);
+        if (message) setAddBankInstanceError(message);
         setAddBankInstanceLoading(false);
       });
   };

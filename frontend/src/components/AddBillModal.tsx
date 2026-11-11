@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError } from '../utils/apiError';
+import FieldHint from './FieldHint';
 
 const MAX_URL_LENGTH = 2083;
 
@@ -93,12 +95,10 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
       setFormLoading(false);
       onClose();
       if (onAdded) onAdded();
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 
-        (typeof error.response?.data === 'object' ? 
-          Object.values(error.response.data).flat().join(', ') : 
-          'Failed to create bill');
-      setFormError(errorMessage);
+    } catch (error) {
+      const parsed = parseApiError(error);
+      setFieldErrors(parsed.fieldErrors);
+      if (parsed.message) setFormError(parsed.message);
       setFormLoading(false);
     }
   };
@@ -117,8 +117,8 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
           {formError && (
             <div className="alert alert-error" data-testid="error-message">
               <span>{
-                Object.values(fieldErrors).length > 0
-                  ? Object.values(fieldErrors).join(' ')
+                Object.values(fieldErrors).some(Boolean)
+                  ? Object.values(fieldErrors).filter(Boolean).join(' ')
                   : formError
               }</span>
             </div>
@@ -133,7 +133,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="name"
               value={form.name}
               onChange={handleFormChange}
-              className={`input input-bordered ${fieldErrors.name ? 'input-error' : ''}`}
+              className={withInputError(fieldErrors, 'name')}
               required
               data-testid="name-input"
             />
@@ -151,7 +151,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="default_amount_due"
               value={form.default_amount_due}
               onChange={handleFormChange}
-              className={`input input-bordered ${fieldErrors.default_amount_due ? 'input-error' : ''}`}
+              className={withInputError(fieldErrors, 'default_amount_due')}
               step="0.01"
               required
               data-testid="amount-input"
@@ -170,7 +170,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="total_balance"
               value={form.total_balance}
               onChange={handleFormChange}
-              className={`input input-bordered ${fieldErrors.total_balance ? 'input-error' : ''}`}
+              className={withInputError(fieldErrors, 'total_balance')}
               step="0.01"
               required
               data-testid="total-balance-input"
@@ -190,7 +190,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="url"
               value={form.url}
               onChange={handleFormChange}
-              className={`input input-bordered ${fieldErrors.url ? 'input-error' : ''}`}
+              className={withInputError(fieldErrors, 'url')}
               maxLength={MAX_URL_LENGTH}
               data-testid="url-input"
             />
@@ -215,7 +215,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="draft_account"
               value={form.draft_account}
               onChange={handleFormChange}
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'draft_account')}
               data-testid="draft-account-select"
             >
               <option value="">Select account</option>
@@ -226,6 +226,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               ))}
               <option value="__add__">Add new…</option>
             </select>
+            <FieldHint message={fieldErrors.draft_account} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="new-bill-category">
@@ -244,7 +245,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="category"
               value={form.category}
               onChange={handleFormChange}
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'category')}
               data-testid="category-select"
             >
               <option value="">Select category</option>
@@ -255,6 +256,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               ))}
               <option value="__add__">Add new…</option>
             </select>
+            <FieldHint message={fieldErrors.category} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="new-bill-recurrence">
@@ -273,7 +275,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="recurrence"
               value={form.recurrence}
               onChange={handleFormChange}
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'recurrence')}
               data-testid="recurrence-select"
             >
               <option value="">Select recurrence</option>
@@ -284,6 +286,7 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               ))}
               <option value="__add__">Add new…</option>
             </select>
+            <FieldHint message={fieldErrors.recurrence} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="new-bill-priority">
@@ -295,11 +298,12 @@ const AddBillModal: React.FC<AddBillModalProps> = ({ show, onClose, token, accou
               name="priority"
               value={form.priority}
               onChange={handleFormChange}
-              className="input input-bordered"
+              className={withInputError(fieldErrors, 'priority')}
               min="0"
               step="1"
               data-testid="priority-input"
             />
+            <FieldHint message={fieldErrors.priority} />
           </div>
           <div className="flex gap-2 mt-2">
             <button
