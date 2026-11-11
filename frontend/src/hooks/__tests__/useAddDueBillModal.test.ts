@@ -43,6 +43,19 @@ describe('useAddDueBillModal', () => {
     expect(result.current.addDueBillForm.amount_due).toBe('123.45');
   });
 
+  it('does not copy a due date while the year is still being typed', () => {
+    const { result } = renderHook(() => useAddDueBillModal(mockToken, mockBills, mockRefresh));
+    act(() => {
+      result.current.handleAddDueBillChange({ target: { name: 'due_date', value: '0004-03-20' } } as any);
+    });
+    expect(result.current.addDueBillForm.due_date).toBe('0004-03-20');
+    expect(result.current.addDueBillForm.pay_date).toBe('');
+    act(() => {
+      result.current.handleAddDueBillChange({ target: { name: 'due_date', value: '0040-03-20' } } as any);
+    });
+    expect(result.current.addDueBillForm.pay_date).toBe('');
+  });
+
   it('copies a due date into a blank pay date', () => {
     const { result } = renderHook(() => useAddDueBillModal(mockToken, mockBills, mockRefresh));
     act(() => {
