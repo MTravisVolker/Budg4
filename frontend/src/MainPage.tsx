@@ -14,8 +14,9 @@ import RenderAddBankAccountModal from './components/RenderAddBankAccountModal';
 import RenderAddStatusModal from './components/RenderAddStatusModal';
 import RenderAddRecurrenceModal from './components/RenderAddRecurrenceModal';
 import RenderAddCategoryModal from './components/RenderAddCategoryModal';
+import PlanMonthModal from './components/PlanMonthModal';
 import { useToast } from './components/ToastProvider';
-import { parseMoneyOrZero } from './utils/format';
+import { isFinishedDateEntry, parseMoneyOrZero } from './utils/format';
 import { parseApiError, type ApiFieldErrors } from './utils/apiError';
 
 interface MainPageProps {
@@ -68,6 +69,7 @@ const MainPage = ({ token }: MainPageProps) => {
   const [showAddStatusModal, setShowAddStatusModal] = useState(false);
   const [showAddRecurrenceModal, setShowAddRecurrenceModal] = useState(false);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showPlanMonthModal, setShowPlanMonthModal] = useState(false);
 
   // Modal stack for navigation and restoration
   const setModalStack: React.Dispatch<React.SetStateAction<Array<{ modal: string; form: unknown; pendingField: string | null }>>> = useState<Array<{ modal: string; form: unknown; pendingField: string | null }>>([])[1];
@@ -274,7 +276,7 @@ const MainPage = ({ token }: MainPageProps) => {
       setAddDueBillForm(form => ({
         ...form,
         due_date: value,
-        pay_date: form.pay_date.trim() === '' ? value : form.pay_date,
+        pay_date: form.pay_date.trim() === '' && isFinishedDateEntry(value) ? value : form.pay_date,
       }));
     } else {
       setAddDueBillForm(form => ({ ...form, [name]: value }));
@@ -377,6 +379,7 @@ const MainPage = ({ token }: MainPageProps) => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Main Table</h1>
         <div className="flex gap-2 items-center">
+          <button className="btn btn-accent" onClick={() => setShowPlanMonthModal(true)}>Plan next month</button>
           <button className="btn btn-primary" onClick={() => setShowAddDueBillModal(true)}>Add Due Bill</button>
           <button className="btn btn-secondary" onClick={() => setShowAddBankInstanceModal(true)}>Add Bank Account Instance</button>
           <div className="relative" ref={dateRangeRef}>
@@ -430,6 +433,16 @@ const MainPage = ({ token }: MainPageProps) => {
           </div>
         </div>
       </div>
+      <PlanMonthModal
+        show={showPlanMonthModal}
+        token={token}
+        onClose={() => setShowPlanMonthModal(false)}
+        onCreated={(range) => {
+          setDateRange(range);
+          setShowPlanMonthModal(false);
+          refresh();
+        }}
+      />
       {/* Modals */}
       <RenderAddDueBillModal
         show={showAddDueBillModal}
