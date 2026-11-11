@@ -1,11 +1,39 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddDueBillModal from '../AddDueBillModal';
 import { Bill, Recurrence, BankAccount, Status } from '../../types';
 import React from 'react';
 
-function renderWithState(props) {
+interface RenderProps {
+  show: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  form: {
+    bill: string;
+    recurrence: string;
+    amount_due: string;
+    total_balance: string;
+    draft_account: string;
+    due_date: string;
+    pay_date: string;
+    status: string;
+    priority: string;
+  };
+  error: string | null;
+  loading: boolean;
+  bills: Bill[];
+  recurrences: { id: number; name: string }[];
+  accounts: { id: number; name: string }[];
+  statuses: { id: number; name: string }[];
+  onAddBill: () => void;
+  onAddRecurrence: () => void;
+  onAddAccount: () => void;
+  onAddStatus: () => void;
+}
+
+function renderWithState(props: RenderProps) {
   function Wrapper() {
     const [form, setForm] = React.useState(props.form);
     return (
@@ -35,8 +63,8 @@ describe('AddDueBillModal', () => {
   ];
 
   const mockAccounts: BankAccount[] = [
-    { id: 1, name: 'Checking', font_color: '#000000' },
-    { id: 2, name: 'Savings', font_color: '#000000' },
+    { id: 1, name: 'Account 1', font_color: '#000000' },
+    { id: 2, name: 'Account 2', font_color: '#FFFFFF' }
   ];
 
   const mockStatuses: Status[] = [
@@ -144,8 +172,8 @@ describe('AddDueBillModal', () => {
     const options = within(accountSelect).getAllByRole('option');
     expect(options).toHaveLength(mockAccounts.length + 2); // +2 for empty option and "Add new" option
     
-    expect(screen.getByText('Checking')).toBeInTheDocument();
-    expect(screen.getByText('Savings')).toBeInTheDocument();
+    expect(screen.getByText('Account 1')).toBeInTheDocument();
+    expect(screen.getByText('Account 2')).toBeInTheDocument();
   });
 
   it('renders status options correctly', () => {
@@ -459,6 +487,35 @@ describe('AddDueBillModal', () => {
     
     const totalBalanceInput = screen.getByTestId('total-balance-input');
     expect(totalBalanceInput).toHaveValue(0);
+  });
+
+  it('shows 0.00 when total balance is blank', () => {
+    renderWithState({
+      ...mockProps,
+      form: { ...mockProps.form, total_balance: '' },
+    });
+
+    const totalBalanceInput = screen.getByTestId('total-balance-input') as HTMLInputElement;
+    expect(totalBalanceInput.value).toBe('0.00');
+  });
+
+  it('normalizes a whole-number total balance to two decimals on blur', async () => {
+    const onChange = vi.fn();
+    renderWithState({
+      ...mockProps,
+      onChange,
+      form: { ...mockProps.form, total_balance: '100' },
+    });
+
+    const totalBalanceInput = screen.getByTestId('total-balance-input');
+    await act(async () => {
+      totalBalanceInput.focus();
+      totalBalanceInput.blur();
+    });
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
+      target: expect.objectContaining({ name: 'total_balance', value: '100.00' }),
+    }));
   });
 
   it('validates priority is a non-negative number', async () => {
