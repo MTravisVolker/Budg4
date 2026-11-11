@@ -1,6 +1,7 @@
 import React from 'react';
 import AddDueBillModal from './AddDueBillModal';
 import { Bill, Recurrence, BankAccount, Status } from '../types';
+import type { ApiFieldErrors } from '../utils/apiError';
 
 interface RenderAddDueBillModalProps {
   show: boolean;
@@ -11,6 +12,7 @@ interface RenderAddDueBillModalProps {
     bill: string;
     recurrence: string;
     amount_due: string;
+    total_balance: string;
     draft_account: string;
     due_date: string;
     pay_date: string;
@@ -18,6 +20,7 @@ interface RenderAddDueBillModalProps {
     priority: string;
   };
   error: string | null;
+  fieldErrors?: ApiFieldErrors;
   loading: boolean;
   bills: Bill[];
   recurrences: Recurrence[];

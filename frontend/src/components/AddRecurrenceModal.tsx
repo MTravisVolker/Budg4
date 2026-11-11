@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError, type ApiFieldErrors } from '../utils/apiError';
+import FieldHint from './FieldHint';
 
 interface AddRecurrenceModalProps {
   show: boolean;
@@ -11,16 +13,19 @@ interface AddRecurrenceModalProps {
 const AddRecurrenceModal: React.FC<AddRecurrenceModalProps> = ({ show, onClose, token, onAdded }) => {
   const [form, setForm] = useState({ name: '', interval: '' });
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<ApiFieldErrors>({});
   const [formLoading, setFormLoading] = useState(false);
 
   if (!show) return null;
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setFieldErrors(errors => ({ ...errors, [e.target.name]: '' }));
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setFieldErrors({});
     setFormLoading(true);
     axios.post('/api/recurrences/', form, { headers: { Authorization: `Bearer ${token}` } })
       .then(() => {
@@ -29,8 +34,10 @@ const AddRecurrenceModal: React.FC<AddRecurrenceModalProps> = ({ show, onClose, 
         onClose();
         onAdded && onAdded();
       })
-      .catch(() => {
-        setFormError('Failed to add recurrence');
+      .catch((error) => {
+        const parsed = parseApiError(error);
+        setFieldErrors(parsed.fieldErrors);
+        if (parsed.message) setFormError(parsed.message);
         setFormLoading(false);
       });
   };
@@ -50,13 +57,15 @@ const AddRecurrenceModal: React.FC<AddRecurrenceModalProps> = ({ show, onClose, 
             <label className="label" htmlFor="recurrence-name">
               <span className="label-text">Name</span>
             </label>
-            <input id="recurrence-name" name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+            <input id="recurrence-name" name="name" value={form.name} onChange={handleFormChange} required className={withInputError(fieldErrors, 'name')} />
+            <FieldHint message={fieldErrors.name} />
           </div>
           <div className="form-control">
             <label className="label" htmlFor="recurrence-interval">
               <span className="label-text">Interval</span>
             </label>
-            <input id="recurrence-interval" name="interval" value={form.interval} onChange={handleFormChange} className="input input-bordered" />
+            <input id="recurrence-interval" name="interval" value={form.interval} onChange={handleFormChange} className={withInputError(fieldErrors, 'interval')} />
+            <FieldHint message={fieldErrors.interval} />
           </div>
           <div className="flex gap-2 mt-2">
             <button type="submit" disabled={formLoading} className="btn btn-primary w-full">Add</button>

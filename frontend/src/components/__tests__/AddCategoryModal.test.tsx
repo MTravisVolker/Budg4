@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddCategoryModal from '../AddCategoryModal';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 import axios from 'axios';
 
 // Mock axios
@@ -141,7 +142,7 @@ describe('AddCategoryModal', () => {
     
     // Wait for error message to appear
     await waitFor(() => {
-      expect(screen.getByText('Failed to add category')).toBeInTheDocument();
+      expect(screen.getByText(GENERIC_API_ERROR)).toBeInTheDocument();
     });
   });
 

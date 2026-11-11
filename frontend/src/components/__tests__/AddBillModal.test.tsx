@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within, act, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddBillModal from '../AddBillModal';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 import { BankAccount, Category, Recurrence } from '../../types';
 import axios from 'axios';
 
@@ -15,9 +16,9 @@ describe('AddBillModal', () => {
     { id: 2, name: 'Savings', font_color: '#000000' },
   ];
 
-  const mockCategories: Category[] = [
-    { id: 1, name: 'Housing', highlight_color: '#FF0000' },
-    { id: 2, name: 'Utilities', highlight_color: '#00FF00' },
+  const mockCategories = [
+    { id: 1, name: 'Housing', url: '/api/categories/1' },
+    { id: 2, name: 'Utilities', url: '/api/categories/2' }
   ];
 
   const mockRecurrences: Recurrence[] = [
@@ -259,7 +260,7 @@ describe('AddBillModal', () => {
     });
     
     await waitFor(() => {
-      expect(screen.getByText('Failed to create bill')).toBeInTheDocument();
+      expect(screen.getByText(GENERIC_API_ERROR)).toBeInTheDocument();
     });
   });
 

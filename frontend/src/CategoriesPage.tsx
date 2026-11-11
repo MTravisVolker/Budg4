@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { parseApiError, withInputError, type ApiFieldErrors } from './utils/apiError';
+import { useToast } from './components/ToastProvider';
+import FieldHint from './components/FieldHint';
 
 // Categories management page for Budg SPA
 
@@ -13,6 +16,7 @@ interface CategoriesPageProps {
 }
 
 const CategoriesPage = ({ token }: CategoriesPageProps) => {
+  const showToast = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,11 +24,13 @@ const CategoriesPage = ({ token }: CategoriesPageProps) => {
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [form, setForm] = useState({ name: '' });
   const [formError, setFormError] = useState<string | null>(null);
+  const [formFieldErrors, setFormFieldErrors] = useState<ApiFieldErrors>({});
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     axios.get('/api/categories/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -32,18 +38,20 @@ const CategoriesPage = ({ token }: CategoriesPageProps) => {
         setCategories(res.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch categories');
+      .catch((error) => {
+        setError(parseApiError(error).message);
         setLoading(false);
       });
   }, [token]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setFormFieldErrors(errors => ({ ...errors, [e.target.name]: '' }));
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setFormFieldErrors({});
     setFormLoading(true);
     const req = editCategory
       ? axios.put(`/api/categories/${editCategory.id}/`, form, { headers: { Authorization: `Bearer ${token}` } })
@@ -54,15 +62,21 @@ const CategoriesPage = ({ token }: CategoriesPageProps) => {
       setForm({ name: '' });
       setFormLoading(false);
       setLoading(true);
+      setError(null);
       axios.get('/api/categories/', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => {
           setCategories(res.data);
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch((error) => {
+          setError(parseApiError(error).message);
+          setLoading(false);
+        });
     })
-      .catch(() => {
-        setFormError('Failed to save category');
+      .catch((error) => {
+        const parsed = parseApiError(error);
+        setFormFieldErrors(parsed.fieldErrors);
+        if (parsed.message) setFormError(parsed.message);
         setFormLoading(false);
       });
   };
@@ -79,8 +93,9 @@ const CategoriesPage = ({ token }: CategoriesPageProps) => {
         setCategories(categories.filter(c => c.id !== id));
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to delete category');
+      .catch((error) => {
+        const { message } = parseApiError(error);
+        if (message) showToast(message);
         setLoading(false);
       });
   };
@@ -132,7 +147,8 @@ const CategoriesPage = ({ token }: CategoriesPageProps) => {
                 <label className="label">
                   <span className="label-text">Name</span>
                 </label>
-                <input name="name" value={form.name} onChange={handleFormChange} required className="input input-bordered" />
+                <input name="name" value={form.name} onChange={handleFormChange} required className={withInputError(formFieldErrors, 'name')} />
+                <FieldHint message={formFieldErrors.name} />
               </div>
               <div className="flex gap-2 mt-2">
                 <button type="submit" disabled={formLoading} className="btn btn-primary w-full">{editCategory ? 'Save' : 'Add'}</button>

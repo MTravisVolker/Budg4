@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import useCategories from '../useCategories';
 import axios from 'axios';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 
 // Mock axios
 vi.mock('axios', () => ({
@@ -69,7 +70,7 @@ describe('useCategories', () => {
 
     expect(result.current.categories).toEqual([]);
     expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe('Failed to fetch categories');
+    expect(result.current.error).toBe(GENERIC_API_ERROR);
   });
 
   it('refreshes categories when refresh is called', async () => {
