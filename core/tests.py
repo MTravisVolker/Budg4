@@ -84,6 +84,51 @@ class MonthPlanTests(TestCase):
         self.assertFalse(plan['bills'][0]['selected'])
         self.assertTrue(plan['bills'][0]['already_exists'])
 
+    def test_a_single_mistyped_future_date_does_not_move_the_plan(self):
+        plan = build_month_plan(
+            [
+                _bill_row(1, 'Rent', '1000.00', date(2026, 11, 1)),
+                _bill_row(2, 'Phone', '80.00', date(2026, 11, 15)),
+                _bill_row(2, 'Phone', '80.00', date(2026, 8, 27), date(2027, 8, 27)),
+            ],
+            [],
+            set(),
+            set(),
+            None,
+        )
+        self.assertEqual(plan['target_label'], 'December 2026')
+        self.assertEqual([row['name'] for row in plan['bills']], ['Rent', 'Phone'])
+        self.assertTrue(all(row['due_date'].startswith('2026-12') for row in plan['bills']))
+
+    def test_each_account_balance_in_the_recent_month_is_copied(self):
+        plan = build_month_plan(
+            [
+                _bill_row(1, 'Rent', '1000.00', date(2026, 11, 1)),
+                _bill_row(2, 'Phone', '80.00', date(2026, 11, 15)),
+            ],
+            [
+                {
+                    'bank_account_id': 7,
+                    'name': 'Checking',
+                    'balance': Decimal('10.00'),
+                    'due_date': date(2026, 11, 6),
+                    'pay_date': date(2026, 11, 6),
+                },
+                {
+                    'bank_account_id': 7,
+                    'name': 'Checking',
+                    'balance': Decimal('20.00'),
+                    'due_date': date(2026, 11, 20),
+                    'pay_date': date(2026, 11, 20),
+                },
+            ],
+            set(),
+            set(),
+            None,
+        )
+        self.assertEqual([row['due_date'] for row in plan['accounts']], ['2026-12-06', '2026-12-20'])
+        self.assertEqual([row['balance'] for row in plan['accounts']], ['10.00', '20.00'])
+
     def test_empty_history_has_no_rows(self):
         plan = build_month_plan([], [], set(), set(), None)
         self.assertEqual(plan['bills'], [])

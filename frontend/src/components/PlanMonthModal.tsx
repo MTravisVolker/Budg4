@@ -115,7 +115,7 @@ export default function PlanMonthModal({ show, token, onClose, onCreated }: Plan
 
   return (
     <div className="modal modal-open z-50" onClick={onClose}>
-      <div className="modal-box w-full max-w-5xl relative" onClick={event => event.stopPropagation()}>
+      <div className="modal-box w-full max-w-5xl max-h-[85vh] flex flex-col relative" onClick={event => event.stopPropagation()}>
         <button
           type="button"
           className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -129,6 +129,7 @@ export default function PlanMonthModal({ show, token, onClose, onCreated }: Plan
         {plan && !loading && plan.bills.length === 0 && plan.accounts.length === 0 && (
           <p>Nothing from the last two months can be carried forward.</p>
         )}
+        <div className="overflow-y-auto min-h-0">
         {plan && plan.accounts.length > 0 && (
           <section className="mb-6">
             <h3 className="font-bold mb-2">Bank accounts</h3>
@@ -209,7 +210,8 @@ export default function PlanMonthModal({ show, token, onClose, onCreated }: Plan
             </div>
           </section>
         )}
-        <div className="modal-action">
+        </div>
+        <div className="modal-action shrink-0">
           <button type="button" className="btn btn-primary" disabled={saving || loading || !plan} onClick={createSelected}>
             {saving ? 'Creating...' : `Create ${plan?.target_label || 'month'}`}
           </button>
