@@ -31,6 +31,19 @@ def _month_name(value):
     return value.strftime('%B %Y')
 
 
+def _latest_substantial_month(dated):
+    """Latest month with more than one row.
+
+    A single mistyped year would otherwise become the month everything is copied from.
+    """
+    counts = {}
+    for when in dated:
+        counts[(when.year, when.month)] = counts.get((when.year, when.month), 0) + 1
+    substantial = [key for key, count in counts.items() if count >= 2]
+    year, month = max(substantial or counts)
+    return date(year, month, 1)
+
+
 def build_month_plan(due_bills, account_instances, existing_bill_dates, existing_account_dates, upcoming_status_id):
     """Propose next month's due bills and account balances from the previous two months."""
     dated = []
@@ -53,7 +66,7 @@ def build_month_plan(due_bills, account_instances, existing_bill_dates, existing
             'accounts': [],
         }
 
-    recent_start = month_start(max(dated))
+    recent_start = _latest_substantial_month(dated)
     older_start = add_months(recent_start, -1)
     target_start = add_months(recent_start, 1)
     older_label = _month_name(older_start)
@@ -125,28 +138,33 @@ def build_month_plan(due_bills, account_instances, existing_bill_dates, existing
 
     for account_id, rows in by_account.items():
         recent_rows = [row for row in rows if in_month(occurrence_date(row['due_date'], row['pay_date']), recent_start)]
-        source = max(recent_rows or rows, key=lambda row: occurrence_date(row['due_date'], row['pay_date']))
-        shift = 1 if recent_rows else 2
-        due_date = add_months(source['due_date'], shift)
-        pay_date = add_months(source['pay_date'] or source['due_date'], shift)
-        already = (account_id, due_date) in existing_account_dates
         if recent_rows:
-            note = f'Balance copied from {recent_label}. Update it when you know the new balance.'
+            sources = sorted(recent_rows, key=lambda row: occurrence_date(row['due_date'], row['pay_date']))
+            shift = 1
         else:
-            note = f'Last balance is from {older_label}, not {recent_label}.'
-        if already:
-            note = f'Already planned for {target_label}.'
-        accounts.append({
-            'bank_account': account_id,
-            'name': source['name'],
-            'balance': _money(source['balance']),
-            'due_date': due_date.isoformat(),
-            'pay_date': pay_date.isoformat(),
-            'status': None if already else upcoming_status_id,
-            'selected': bool(recent_rows) and not already,
-            'already_exists': already,
-            'note': note,
-        })
+            sources = [max(rows, key=lambda row: occurrence_date(row['due_date'], row['pay_date']))]
+            shift = 2
+        for source in sources:
+            due_date = add_months(source['due_date'], shift)
+            pay_date = add_months(source['pay_date'] or source['due_date'], shift)
+            already = (account_id, due_date) in existing_account_dates
+            if recent_rows:
+                note = f'Balance copied from {recent_label}. Update it when you know the new balance.'
+            else:
+                note = f'Last balance is from {older_label}, not {recent_label}.'
+            if already:
+                note = f'Already planned for {target_label}.'
+            accounts.append({
+                'bank_account': account_id,
+                'name': source['name'],
+                'balance': _money(source['balance']),
+                'due_date': due_date.isoformat(),
+                'pay_date': pay_date.isoformat(),
+                'status': None if already else upcoming_status_id,
+                'selected': bool(recent_rows) and not already,
+                'already_exists': already,
+                'note': note,
+            })
 
     unique_bills = []
     seen_bills = set()
@@ -158,7 +176,16 @@ def build_month_plan(due_bills, account_instances, existing_bill_dates, existing
         unique_bills.append(row)
     bills = unique_bills
     bills.sort(key=lambda row: (row['due_date'], row['name'].lower()))
-    accounts.sort(key=lambda row: row['name'].lower())
+    unique_accounts = []
+    seen_accounts = set()
+    for row in accounts:
+        key = (row['bank_account'], row['due_date'])
+        if key in seen_accounts:
+            continue
+        seen_accounts.add(key)
+        unique_accounts.append(row)
+    accounts = unique_accounts
+    accounts.sort(key=lambda row: (row['due_date'], row['name'].lower()))
     return {
         'history_start': older_start.isoformat(),
         'history_end': month_end(recent_start).isoformat(),
