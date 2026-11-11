@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { parseApiError } from '../utils/apiError';
 
 export interface BankAccount {
   id: number;
@@ -15,6 +16,7 @@ export default function useBankAccounts(token: string) {
   const fetchAccounts = useCallback(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     axios.get('/api/bankaccounts/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -22,8 +24,8 @@ export default function useBankAccounts(token: string) {
         setAccounts(res.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch bank accounts');
+      .catch((error) => {
+        setError(parseApiError(error).message);
         setLoading(false);
       });
   }, [token]);

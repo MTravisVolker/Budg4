@@ -1,0 +1,14 @@
+<MainTableBody
+  rows={allRowsRaw}
+  onEdit={handleEdit}
+  onDelete={handleDelete}
+  onStatusChange={handleStatusChange}
+  onPriorityChange={handlePriorityChange}
+  onPayDateChange={handlePayDateChange}
+  onDueDateChange={handleDueDateChange}
+  onAmountChange={handleAmountChange}
+  onTotalBalanceChange={handleTotalBalanceChange}
+  onDraftAccountChange={handleDraftAccountChange}
+  onRecurrenceChange={handleRecurrenceChange}
+  onBillChange={handleBillChange}
+/> 

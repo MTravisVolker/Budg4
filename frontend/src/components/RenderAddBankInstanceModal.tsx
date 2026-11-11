@@ -1,6 +1,7 @@
 import React from 'react';
 import AddBankInstanceModal from './AddBankInstanceModal';
 import { BankAccount, Status } from '../types';
+import type { ApiFieldErrors } from '../utils/apiError';
 
 interface RenderAddBankInstanceModalProps {
   show: boolean;
@@ -16,6 +17,7 @@ interface RenderAddBankInstanceModalProps {
     priority?: string;
   };
   error: string | null;
+  fieldErrors?: ApiFieldErrors;
   loading: boolean;
   accounts: BankAccount[];
   statuses: Status[];

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import useMainPageData from '../useMainPageData';
 import axios from 'axios';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 
 vi.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -76,7 +77,7 @@ describe('useMainPageData', () => {
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
-    expect(result.current.error).toBe('Failed to fetch data');
+    expect(result.current.error).toBe(GENERIC_API_ERROR);
     expect(result.current.loading).toBe(false);
   });
 

@@ -1,16 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
-export interface Bill {
-  id: number;
-  name: string;
-  default_amount_due: string;
-  url: string;
-  draft_account: number;
-  category: number;
-  recurrence: number;
-  priority: number;
-}
+import { Bill } from '../types';
+import { parseApiError } from '../utils/apiError';
 
 export default function useBills(token: string) {
   const [bills, setBills] = useState<Bill[]>([]);
@@ -20,6 +11,7 @@ export default function useBills(token: string) {
   const fetchBills = useCallback(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     axios.get('/api/bills/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -27,8 +19,8 @@ export default function useBills(token: string) {
         setBills(res.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch bills');
+      .catch((error) => {
+        setError(parseApiError(error).message);
         setLoading(false);
       });
   }, [token]);

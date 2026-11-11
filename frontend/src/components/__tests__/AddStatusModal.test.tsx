@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddStatusModal from '../AddStatusModal';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 import axios from 'axios';
 
 // Mock axios
@@ -70,7 +71,7 @@ describe('AddStatusModal', () => {
       const submitButton = screen.getByRole('button', { name: /add/i });
       await userEvent.click(submitButton);
     });
-    expect(await screen.findByText('Failed to add status')).toBeInTheDocument();
+    expect(await screen.findByText(GENERIC_API_ERROR)).toBeInTheDocument();
   });
 
   it('resets form after successful submission', async () => {

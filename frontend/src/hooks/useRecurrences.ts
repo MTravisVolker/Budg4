@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { parseApiError } from '../utils/apiError';
 
 export interface Recurrence {
   id: number;
@@ -15,6 +16,7 @@ export default function useRecurrences(token: string) {
   const fetchRecurrences = useCallback(() => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     axios.get('/api/recurrences/', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -22,8 +24,8 @@ export default function useRecurrences(token: string) {
         setRecurrences(res.data);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch recurrences');
+      .catch((error) => {
+        setError(parseApiError(error).message);
         setLoading(false);
       });
   }, [token]);

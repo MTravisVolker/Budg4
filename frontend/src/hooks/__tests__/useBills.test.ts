@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import useBills from '../useBills';
 import axios from 'axios';
+import { GENERIC_API_ERROR } from '../../utils/apiError';
 
 vi.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -45,7 +46,7 @@ describe('useBills', () => {
     });
     expect(result.current.bills).toEqual([]);
     expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe('Failed to fetch bills');
+    expect(result.current.error).toBe(GENERIC_API_ERROR);
   });
 
   it('refreshes bills when refresh is called', async () => {

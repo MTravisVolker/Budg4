@@ -1,5 +1,5 @@
 import React from 'react';
-import { DueBill, BankAccountInstance, Bill, BankAccount, Status } from '../types';
+import { Bill, BankAccount, Status } from '../types';
 import { formatDate, formatCurrency } from '../utils/format';
 import { getComplementaryColor } from '../utils/color';
 
@@ -43,15 +43,6 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
 }) => {
   // Calculate font color based on status
   const getFontColor = () => {
-    // Debug info as a comment in the DOM
-    const debugInfo = {
-      accountFontColor: row.accountObj?.font_color,
-      statusName: row.statusObj?.name,
-      highlightColor: row.statusObj?.highlight_color,
-      hasAccountObj: !!row.accountObj,
-      hasStatusObj: !!row.statusObj
-    };
-
     if (row.statusObj?.highlight_color) {
       // If status is "estimated", use the account's font color or default
       if (row.statusObj.name.toLowerCase() === 'estimated') {
