@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { addDueBill } from '../api/dueBillApi';
 import { Bill } from '../types';
 import { parseApiError } from '../utils/apiError';
+import { isFinishedDateEntry } from '../utils/format';
 
 export default function useAddDueBillModal(token: string, bills: Bill[], refresh: () => void) {
   const [showAddDueBill, setShowAddDueBill] = useState(false);
@@ -28,7 +29,7 @@ export default function useAddDueBillModal(token: string, bills: Bill[], refresh
       setAddDueBillForm(form => ({
         ...form,
         due_date: value,
-        pay_date: form.pay_date.trim() === '' ? value : form.pay_date,
+        pay_date: form.pay_date.trim() === '' && isFinishedDateEntry(value) ? value : form.pay_date,
       }));
     } else {
       setAddDueBillForm(form => ({ ...form, [name]: value }));

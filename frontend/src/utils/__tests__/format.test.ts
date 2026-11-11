@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, formatCurrency, parseMoneyOrZero } from '../format';
+import { formatDate, formatCurrency, isFinishedDateEntry, parseMoneyOrZero } from '../format';
 
 describe('Format Utilities', () => {
   describe('formatDate', () => {
@@ -22,6 +22,21 @@ describe('Format Utilities', () => {
     it('returns original string for invalid date format', () => {
       expect(formatDate('invalid-date')).toBe('invalid-date');
       expect(formatDate('2024/03/15')).toBe('2024/03/15');
+    });
+  });
+
+  describe('isFinishedDateEntry', () => {
+    it('accepts a real date once the year has four digits', () => {
+      expect(isFinishedDateEntry('2024-03-20')).toBe(true);
+      expect(isFinishedDateEntry('2026-12-01')).toBe(true);
+    });
+
+    it('rejects partial years produced while typing', () => {
+      expect(isFinishedDateEntry('')).toBe(false);
+      expect(isFinishedDateEntry('0004-03-20')).toBe(false);
+      expect(isFinishedDateEntry('0040-03-20')).toBe(false);
+      expect(isFinishedDateEntry('0402-03-20')).toBe(false);
+      expect(isFinishedDateEntry('2024-02-31')).toBe(false);
     });
   });
 

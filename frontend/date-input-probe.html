@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+<body>
+<input id="d" type="date" />
+<pre id="log"></pre>
+<script>
+  const input = document.getElementById('d');
+  const log = document.getElementById('log');
+  function note(kind) {
+    log.textContent += kind + ' value=' + JSON.stringify(input.value) + '\n';
+  }
+  input.addEventListener('input', () => note('input'));
+  input.addEventListener('change', () => note('change'));
+  input.addEventListener('blur', () => note('blur'));
+</script>
+</body>
+</html>
