@@ -529,7 +529,9 @@ const MainPage = ({ token }: MainPageProps) => {
                 <th>Priority</th>
                 <th className="text-right">Payment</th>
                 <th className="text-right">Total Balance</th>
-                <th>Actions</th>
+                <th className="w-px text-center">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
