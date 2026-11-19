@@ -52,6 +52,17 @@ const MainPage = ({ token }: MainPageProps) => {
     dueBills, bankInstances, accounts, bills, statuses, recurrences, categories, loading, error, refresh, dateRange, setDateRange
   } = useMainPageData(token);
   const showToast = useToast();
+  const rowsRef = useRef({ dueBills, bankInstances });
+  const dueBillsState = useRef(dueBills);
+  const bankInstancesState = useRef(bankInstances);
+  if (dueBillsState.current !== dueBills) {
+    rowsRef.current = { ...rowsRef.current, dueBills };
+    dueBillsState.current = dueBills;
+  }
+  if (bankInstancesState.current !== bankInstances) {
+    rowsRef.current = { ...rowsRef.current, bankInstances };
+    bankInstancesState.current = bankInstances;
+  }
 
   // Local state for add modals and forms
   const [showDateRangePicker, setShowDateRangePicker] = useState(false);
@@ -128,44 +139,64 @@ const MainPage = ({ token }: MainPageProps) => {
 
   // Inline cell editing logic (encapsulated in custom hook)
   const {
-    editingCell, savingEdit,
+    editingCell, savingEdit, saveCell,
     handleCellDoubleClick, handleEditInputChange, handleEditInputBlur, handleEditInputKeyDown
   } = useEditableCell(async (editingCell) => {
     // Save edit handler for both DueBill and BankAccountInstance
     if (!editingCell) return;
     const { rowId, type, field, value } = editingCell;
     if (type === 'DueBill') {
-      const row = dueBills.find(d => d.id === rowId);
+      const row = rowsRef.current.dueBills.find(d => d.id === rowId);
       if (!row) return;
-      const payload: Record<string, unknown> = { ...row };
+      const nextRow = { ...row };
       if (field === 'name') {
-        payload.bill = parseInt(value as string);
+        nextRow.bill = parseInt(value as string);
       } else if (field === 'account') {
-        payload.draft_account = value ? parseInt(value as string) : null;
+        nextRow.draft_account = value ? parseInt(value as string) : null;
       } else if (field === 'status') {
-        payload.status = value ? parseInt(value as string) : null;
+        nextRow.status = value ? parseInt(value as string) : null;
       } else if (field === 'recurrence') {
-        payload.recurrence = value ? parseInt(value as string) : null;
-      } else {
-        payload[field] = value;
+        nextRow.recurrence = value ? parseInt(value as string) : null;
+      } else if (field in nextRow) {
+        (nextRow as Record<string, unknown>)[field] = value;
       }
+      rowsRef.current = {
+        ...rowsRef.current,
+        dueBills: rowsRef.current.dueBills.map(d => d.id === rowId ? nextRow : d),
+      };
+      const payload: Record<string, unknown> = { ...nextRow };
       delete payload.id;
       await editDueBill(row.id, payload, token);
     } else {
-      const row = bankInstances.find(b => b.id === rowId);
+      const row = rowsRef.current.bankInstances.find(b => b.id === rowId);
       if (!row) return;
-      const payload: Record<string, unknown> = { ...row };
+      const nextRow = { ...row };
       if (field === 'name' || field === 'account') {
-        payload.bank_account = parseInt(value as string);
+        nextRow.bank_account = parseInt(value as string);
       } else if (field === 'status') {
-        payload.status = value ? parseInt(value as string) : null;
-      } else {
-        payload[field] = value;
+        nextRow.status = value ? parseInt(value as string) : null;
+      } else if (field in nextRow) {
+        (nextRow as Record<string, unknown>)[field] = value;
       }
+      rowsRef.current = {
+        ...rowsRef.current,
+        bankInstances: rowsRef.current.bankInstances.map(b => b.id === rowId ? nextRow : b),
+      };
+      const payload: Record<string, unknown> = { ...nextRow };
       delete payload.id;
       await editBankAccountInstance(row.id, payload, token);
     }
-    await refresh();
+    await refresh({ silent: true });
+  });
+
+  const handleStatusChange = (
+    row: { id: number; type: 'DueBill' | 'BankAccountInstance' },
+    statusId: number,
+  ) => saveCell({
+    rowId: row.id,
+    type: row.type,
+    field: 'status',
+    value: String(statusId),
   });
 
   // Delete row handler
@@ -529,7 +560,9 @@ const MainPage = ({ token }: MainPageProps) => {
                 <th>Priority</th>
                 <th className="text-right">Payment</th>
                 <th className="text-right">Total Balance</th>
-                <th>Actions</th>
+                <th className="w-px text-center">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -548,7 +581,7 @@ const MainPage = ({ token }: MainPageProps) => {
                 onDelete={handleDeleteRow}
                 onAddBill={() => handleAddNewFromModal('AddBill', 'bill', addBillForm)}
                 onAddAccount={() => handleAddNewFromModal('AddBankAccount', 'account', addBankInstanceForm)}
-                onAddStatus={() => handleAddNewFromModal('AddStatus', 'status', addBankInstanceForm)}
+                onStatusChange={handleStatusChange}
               />
             </tbody>
           </table>

@@ -23,7 +23,7 @@ interface MainTableBodyProps {
   onDelete: (type: 'DueBill' | 'BankAccountInstance', id: number) => void;
   onAddBill: () => void;
   onAddAccount: () => void;
-  onAddStatus: () => void;
+  onStatusChange: (row: { id: number; type: 'DueBill' | 'BankAccountInstance' }, statusId: number) => void;
 }
 
 const MainTableBody: React.FC<MainTableBodyProps> = ({
@@ -41,7 +41,7 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
   onDelete,
   onAddBill,
   onAddAccount,
-  onAddStatus,
+  onStatusChange,
 }) => {
   const renderedRows: React.ReactNode[] = [];
 
@@ -99,7 +99,7 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       );
       // Find due bills in this range
@@ -139,7 +139,7 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
             onDelete={onDelete}
             onAddBill={onAddBill}
             onAddAccount={onAddAccount}
-            onAddStatus={onAddStatus}
+            onStatusChange={onStatusChange}
           />
         );
         usedDueBillIds.add(db.id);
@@ -195,7 +195,7 @@ const MainTableBody: React.FC<MainTableBodyProps> = ({
             onDelete={onDelete}
             onAddBill={onAddBill}
             onAddAccount={onAddAccount}
-            onAddStatus={onAddStatus}
+            onStatusChange={onStatusChange}
           />
         );
       });

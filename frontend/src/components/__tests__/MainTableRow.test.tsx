@@ -25,7 +25,7 @@ describe('MainTableRow', () => {
   let onDelete: any;
   let onAddBill: any;
   let onAddAccount: any;
-  let onAddStatus: any;
+  let onStatusChange: any;
 
   beforeEach(() => {
     handleCellDoubleClick = vi.fn();
@@ -35,7 +35,7 @@ describe('MainTableRow', () => {
     onDelete = vi.fn();
     onAddBill = vi.fn();
     onAddAccount = vi.fn();
-    onAddStatus = vi.fn();
+    onStatusChange = vi.fn();
   });
 
   it('renders a DueBill row with all fields', () => {
@@ -69,7 +69,7 @@ describe('MainTableRow', () => {
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       </tbody></table>
     );
@@ -77,7 +77,7 @@ describe('MainTableRow', () => {
     expect(screen.getByText('Electric')).toBeInTheDocument();
     expect(screen.getByText('03/28/2024')).toBeInTheDocument();
     expect(screen.getByText('04/01/2024')).toBeInTheDocument();
-    expect(screen.getByText('Pending')).toBeInTheDocument();
+    expect(screen.getByTestId('status-label')).toHaveTextContent('Pending');
     expect(screen.getByText('Checking')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('$50.00')).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('MainTableRow', () => {
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       </tbody></table>
     );
@@ -120,7 +120,7 @@ describe('MainTableRow', () => {
     const checkingCells = screen.getAllByText('Checking');
     expect(checkingCells.length).toBeGreaterThan(1);
     expect(screen.getByText('03/28/2024')).toBeInTheDocument();
-    expect(screen.getByText('Pending')).toBeInTheDocument();
+    expect(screen.getByTestId('status-label')).toHaveTextContent('Pending');
     expect(screen.getByText('$1,000.00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
   });
@@ -156,7 +156,7 @@ describe('MainTableRow', () => {
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       </tbody></table>
     );
@@ -195,7 +195,7 @@ describe('MainTableRow', () => {
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       </tbody></table>
     );
@@ -234,7 +234,7 @@ describe('MainTableRow', () => {
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       </tbody></table>
     );
@@ -272,7 +272,7 @@ describe('MainTableRow', () => {
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       </tbody></table>
     );
@@ -311,11 +311,131 @@ describe('MainTableRow', () => {
           onDelete={onDelete}
           onAddBill={onAddBill}
           onAddAccount={onAddAccount}
-          onAddStatus={onAddStatus}
+          onStatusChange={onStatusChange}
         />
       </tbody></table>
     );
     const link = screen.getByRole('link', { name: 'Water' });
     expect(link).toHaveAttribute('href', 'https://water.com');
+  });
+
+  it('changes status when another color chip is clicked', async () => {
+    render(
+      <table><tbody>
+        <MainTableRow
+          row={{
+            id: 1,
+            type: 'DueBill',
+            name: 'Electric',
+            bill: 1,
+            amount_due: '50.00',
+            due_date: '2024-04-01',
+            pay_date: '2024-03-28',
+            status: 1,
+            draft_account: 1,
+            priority: 2,
+            accountObj: mockAccounts[0],
+            accountId: 1,
+            statusObj: mockStatuses[0],
+          }}
+          editingCell={null}
+          savingEdit={false}
+          handleCellDoubleClick={handleCellDoubleClick}
+          handleEditInputChange={handleEditInputChange}
+          handleEditInputBlur={handleEditInputBlur}
+          handleEditInputKeyDown={handleEditInputKeyDown}
+          bills={mockBills}
+          accounts={mockAccounts}
+          statuses={mockStatuses}
+          onDelete={onDelete}
+          onAddBill={onAddBill}
+          onAddAccount={onAddAccount}
+          onStatusChange={onStatusChange}
+        />
+      </tbody></table>
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'cleared' }));
+    expect(onStatusChange).toHaveBeenCalledWith({ id: 1, type: 'DueBill' }, 2);
+  });
+
+  it('leaves the status unchanged when the current chip is clicked', async () => {
+    render(
+      <table><tbody>
+        <MainTableRow
+          row={{
+            id: 1,
+            type: 'DueBill',
+            name: 'Electric',
+            bill: 1,
+            amount_due: '50.00',
+            due_date: '2024-04-01',
+            pay_date: '2024-03-28',
+            status: 1,
+            draft_account: 1,
+            priority: 2,
+            accountObj: mockAccounts[0],
+            accountId: 1,
+            statusObj: mockStatuses[0],
+          }}
+          editingCell={null}
+          savingEdit={false}
+          handleCellDoubleClick={handleCellDoubleClick}
+          handleEditInputChange={handleEditInputChange}
+          handleEditInputBlur={handleEditInputBlur}
+          handleEditInputKeyDown={handleEditInputKeyDown}
+          bills={mockBills}
+          accounts={mockAccounts}
+          statuses={mockStatuses}
+          onDelete={onDelete}
+          onAddBill={onAddBill}
+          onAddAccount={onAddAccount}
+          onStatusChange={onStatusChange}
+        />
+      </tbody></table>
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Pending' }));
+    expect(onStatusChange).not.toHaveBeenCalled();
+  });
+
+  it('previews a hovered status without resizing the label', async () => {
+    render(
+      <table><tbody>
+        <MainTableRow
+          row={{
+            id: 1,
+            type: 'DueBill',
+            name: 'Electric',
+            bill: 1,
+            amount_due: '50.00',
+            due_date: '2024-04-01',
+            pay_date: '2024-03-28',
+            status: 1,
+            draft_account: 1,
+            priority: 2,
+            accountObj: mockAccounts[0],
+            accountId: 1,
+            statusObj: mockStatuses[0],
+          }}
+          editingCell={null}
+          savingEdit={false}
+          handleCellDoubleClick={handleCellDoubleClick}
+          handleEditInputChange={handleEditInputChange}
+          handleEditInputBlur={handleEditInputBlur}
+          handleEditInputKeyDown={handleEditInputKeyDown}
+          bills={mockBills}
+          accounts={mockAccounts}
+          statuses={mockStatuses}
+          onDelete={onDelete}
+          onAddBill={onAddBill}
+          onAddAccount={onAddAccount}
+          onStatusChange={onStatusChange}
+        />
+      </tbody></table>
+    );
+    const label = screen.getByTestId('status-label');
+    const before = label.getBoundingClientRect().width;
+    await userEvent.hover(screen.getByRole('radio', { name: 'cleared' }));
+    expect(label).toHaveTextContent('cleared');
+    expect(label.getBoundingClientRect().width).toBe(before);
   });
 }); 

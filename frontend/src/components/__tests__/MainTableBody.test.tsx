@@ -20,7 +20,7 @@ describe('MainTableBody', () => {
     onDelete: vi.fn(),
     onAddBill: vi.fn(),
     onAddAccount: vi.fn(),
-    onAddStatus: vi.fn(),
+    onStatusChange: vi.fn(),
   };
 
   beforeEach(() => {

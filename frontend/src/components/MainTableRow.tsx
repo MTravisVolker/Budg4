@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Bill, BankAccount, Status } from '../types';
 import { formatDate, formatCurrency } from '../utils/format';
 import { getComplementaryColor } from '../utils/color';
@@ -22,7 +22,7 @@ interface MainTableRowProps {
   onDelete: (type: 'DueBill' | 'BankAccountInstance', id: number) => void;
   onAddBill?: () => void;
   onAddAccount?: () => void;
-  onAddStatus?: () => void;
+  onStatusChange: (row: { id: number; type: 'DueBill' | 'BankAccountInstance' }, statusId: number) => void | Promise<unknown>;
 }
 
 const MainTableRow: React.FC<MainTableRowProps> = ({
@@ -39,17 +39,38 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
   onDelete,
   onAddBill,
   onAddAccount,
-  onAddStatus,
+  onStatusChange,
 }) => {
+  const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
+  const [hoverStatusId, setHoverStatusId] = useState<number | null>(null);
+  const statusRequest = useRef(0);
+  const shownStatusId = pendingStatusId != null && pendingStatusId !== row.status
+    ? pendingStatusId
+    : (row.status ?? null);
+  const shownStatus = statuses.find(status => status.id === shownStatusId) ?? row.statusObj;
+  const labelStatus = (hoverStatusId != null
+    ? statuses.find(status => status.id === hoverStatusId)
+    : undefined) ?? shownStatus;
+
+  const applyStatus = (statusId: number) => {
+    if (statusId === shownStatusId) return;
+    const request = ++statusRequest.current;
+    setPendingStatusId(statusId);
+    setHoverStatusId(null);
+    void Promise.resolve(onStatusChange({ id: row.id, type: row.type }, statusId)).catch(() => {
+      if (statusRequest.current === request) setPendingStatusId(null);
+    });
+  };
+
   // Calculate font color based on status
   const getFontColor = () => {
-    if (row.statusObj?.highlight_color) {
+    if (shownStatus?.highlight_color) {
       // If status is "estimated", use the account's font color or default
-      if (row.statusObj.name.toLowerCase() === 'estimated') {
+      if (shownStatus.name.toLowerCase() === 'estimated') {
         return row.accountObj?.font_color || undefined;
       }
       // For other statuses, use complementary color of highlight color
-      return getComplementaryColor(row.statusObj.highlight_color);
+      return getComplementaryColor(shownStatus.highlight_color);
     }
     
     // Fallback to account font color if no status highlight color
@@ -61,7 +82,7 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
   };
 
   const fontColor = getFontColor();
-  const backgroundColor = row.statusObj?.highlight_color || undefined;
+  const backgroundColor = shownStatus?.highlight_color || undefined;
 
   return (
     <tr
@@ -190,36 +211,54 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
         )}
       </td>
       {/* Status */}
-      <td
-        style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}
-        onDoubleClick={() => handleCellDoubleClick(row, row.type, 'status', row.statusObj?.id || '')}
-      >
-        {editingCell && editingCell.rowId === row.id && editingCell.type === row.type && editingCell.field === 'status' ? (
-          <div className="flex items-center gap-1">
-            <select
-              value={editingCell.value}
-              onChange={e => {
-                if (e.target.value === '__add__') {
-                  onAddStatus && onAddStatus();
-                } else {
-                  handleEditInputChange(e);
-                }
-              }}
-              onBlur={handleEditInputBlur}
-              onKeyDown={handleEditInputKeyDown}
-              autoFocus
-              className="input input-bordered"
-              disabled={savingEdit}
-            >
-              <option value="">Select status</option>
-              {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              <option value="__add__">Add new…</option>
-            </select>
-            <button type="button" className="btn btn-xs btn-link" onClick={onAddStatus}>Add</button>
+      <td style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}>
+        <div className="flex flex-nowrap items-center gap-1">
+          <span className="inline-grid whitespace-nowrap">
+            {statuses.map(status => (
+              <span
+                key={status.id}
+                className="col-start-1 row-start-1"
+                style={{ visibility: 'hidden' }}
+                aria-hidden="true"
+              >
+                {status.name}
+              </span>
+            ))}
+            <span className="col-start-1 row-start-1" data-testid="status-label">
+              {labelStatus?.name || '-'}
+            </span>
+          </span>
+          <div role="radiogroup" aria-label={`Status for ${row.name}`} className="flex shrink-0 items-center gap-px">
+            {statuses.map(status => {
+              const selected = status.id === shownStatusId;
+              return (
+                <button
+                  key={status.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={status.name}
+                  title={status.name}
+                  onMouseDown={event => event.preventDefault()}
+                  onMouseEnter={() => setHoverStatusId(status.id)}
+                  onMouseLeave={() => setHoverStatusId(current => current === status.id ? null : current)}
+                  onFocus={() => setHoverStatusId(status.id)}
+                  onBlur={() => setHoverStatusId(current => current === status.id ? null : current)}
+                  onClick={event => {
+                    event.stopPropagation();
+                    applyStatus(status.id);
+                  }}
+                  className="inline-flex h-3.5 w-3.5 shrink-0 cursor-pointer rounded-sm border border-current p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                  style={{
+                    backgroundColor: status.highlight_color,
+                    outline: selected ? '2px solid currentColor' : undefined,
+                    outlineOffset: selected ? '1px' : undefined,
+                  }}
+                />
+              );
+            })}
           </div>
-        ) : (
-          row.statusObj?.name || '-'
-        )}
+        </div>
       </td>
       {/* Account */}
       <td
@@ -320,9 +359,29 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
         )}
       </td>
       {/* Delete Button */}
-      <td>
-        <button className="btn btn-error btn-xs" onClick={() => onDelete(row.type, row.id)}>
-          Delete
+      <td className="w-px text-center">
+        <button
+          type="button"
+          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-black/15 bg-white text-red-600 shadow-sm hover:border-red-600 hover:bg-red-600 hover:text-white"
+          onClick={() => onDelete(row.type, row.id)}
+          aria-label="Delete"
+          title="Delete"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            className="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+            />
+          </svg>
         </button>
       </td>
     </tr>

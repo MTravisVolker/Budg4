@@ -52,16 +52,16 @@ export default function useMainPageData(token: string) {
     }
   }, [dateRange]);
 
-  const fetchAll = useCallback(() => {
-    if (!token) return;
-    setLoading(true);
+  const fetchAll = useCallback((options?: { silent?: boolean }) => {
+    if (!token) return Promise.resolve();
+    if (!options?.silent) setLoading(true);
     setError(null);
     const params = new URLSearchParams();
     if (dateRange.start && dateRange.end) {
       params.append('start_date', dateRange.start);
       params.append('end_date', dateRange.end);
     }
-    Promise.all([
+    return Promise.all([
       axios.get(`/api/duebills/?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } }),
       axios.get(`/api/bankaccountinstances/?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } }),
       axios.get('/api/bankaccounts/', { headers: { Authorization: `Bearer ${token}` } }),
