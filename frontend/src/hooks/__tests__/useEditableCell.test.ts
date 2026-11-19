@@ -73,6 +73,26 @@ describe('useEditableCell', () => {
     expect(result.current.savingEdit).toBe(false);
   });
 
+  it('saves a status change without opening the cell', async () => {
+    const { result } = renderHook(() => useEditableCell(onSave));
+    await act(async () => {
+      await result.current.saveCell({ rowId: 4, type: 'DueBill', field: 'status', value: '2' });
+    });
+    expect(onSave).toHaveBeenCalledWith({ rowId: 4, type: 'DueBill', field: 'status', value: '2' });
+    expect(result.current.editingCell).toBeNull();
+  });
+
+  it('keeps a different open edit when a status save finishes', async () => {
+    const { result } = renderHook(() => useEditableCell(onSave));
+    act(() => {
+      result.current.handleCellDoubleClick({ id: 1, type: 'DueBill' }, 'DueBill', 'amount_due', '10');
+    });
+    await act(async () => {
+      await result.current.saveCell({ rowId: 1, type: 'DueBill', field: 'status', value: '2' });
+    });
+    expect(result.current.editingCell).toEqual({ rowId: 1, type: 'DueBill', field: 'amount_due', value: '10' });
+  });
+
   it('rolls the cell back when save fails', async () => {
     onSave.mockRejectedValueOnce(new Error('save failed'));
     const { result } = renderHook(() => useEditableCell(onSave));
