@@ -212,9 +212,23 @@ const MainTableRow: React.FC<MainTableRowProps> = ({
       </td>
       {/* Status */}
       <td style={row.type === 'BankAccountInstance' ? { fontWeight: 'bold' } : {}}>
-        <div className="flex flex-wrap items-center gap-1">
-          <span>{labelStatus?.name || '-'}</span>
-          <div role="radiogroup" aria-label={`Status for ${row.name}`} className="flex items-center gap-px">
+        <div className="flex flex-nowrap items-center gap-1">
+          <span className="inline-grid whitespace-nowrap">
+            {statuses.map(status => (
+              <span
+                key={status.id}
+                className="col-start-1 row-start-1"
+                style={{ visibility: 'hidden' }}
+                aria-hidden="true"
+              >
+                {status.name}
+              </span>
+            ))}
+            <span className="col-start-1 row-start-1" data-testid="status-label">
+              {labelStatus?.name || '-'}
+            </span>
+          </span>
+          <div role="radiogroup" aria-label={`Status for ${row.name}`} className="flex shrink-0 items-center gap-px">
             {statuses.map(status => {
               const selected = status.id === shownStatusId;
               return (
